@@ -2,11 +2,13 @@ import jingo
 
 from django.http import HttpResponse
 
+from session_csrf import anonymous_csrf
 
+@anonymous_csrf
 def about(request):
     return jingo.render(request, 'landing/about.html')
 
-
+@anonymous_csrf
 def home(request):
     return jingo.render(request, 'landing/home.html')
 

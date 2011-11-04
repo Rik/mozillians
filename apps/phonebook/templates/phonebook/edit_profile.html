@@ -8,21 +8,32 @@
   <form action="" method="POST" enctype="multipart/form-data">
     {{ csrf() }}
 
-    {#
-    {% if registration_flow %}
-      Step 2 of 3 [ register | <strong>profile</strong> | get vouched ]
+    {% if mode == 'new' %}
+      <h1>{{ _('Create Your Profile') }}</h1>
+    {% else %}
+      <h1>{{ _('Edit Your Profile') }}</h1>
     {% endif %}
-
-    <h1>{% if person.voucher_unique_id %}Mozillian{% else %}Pending{% endif %} Profile</h1>
-    #}
-
-    <h1>{{ _('Edit Your Profile') }}</h1>
 
     {% if form.errors %}
       <p class="form-errors">
         {{ _("Sorry, but there were problems with the info you submitted.
               Please review the form, correct any errors, and try again.") }}
       </p>
+    {% endif %}
+
+    {% if intent == 'login' %}
+      <div class="form-errors">
+        <h3>{{ _('Already have a profile?') }}</h3>
+        <p>
+          {% trans logout=url('logout'),
+                   home=url('home') %}
+            <strong>{{ email }}</strong> does not have a profile.
+            If you think you've already created a profile, try 
+            <a href="{{ logout }}?next={{ home }}">logging in</a>
+            with a different email address.
+          {% endtrans %}
+        </p>
+      </div>
     {% endif %}
 
     <div class="blue-pastels">
@@ -50,9 +61,14 @@
         {% endfor %}
 
         <div id="photo-container" class="{{ 'error' if form.errors['photo'] }}">
-          <img alt="{{ _('Your Profile Photo') }}" id="profile-photo"
-            src="{{ url('phonebook.profile_photo', person.unique_id) }}">
 
+          {% if mode == 'new' %}
+            <img alt="{{ _('Your Profile Photo') }}" id="profile-photo"
+                 src="/media/img/unknown.png">
+          {% else %}
+            <img alt="{{ _('Your Profile Photo') }}" id="profile-photo"
+                 src="{{ url('phonebook.profile_photo', person.unique_id) }}">
+          {% endif %}
           {{ form['photo'].label_tag() }}
 
           {% if form['photo'].field.required %}
@@ -93,22 +109,37 @@
 
         <dl id="email-container">
           <dt>{{ _('Primary Email:') }}</dt>
-          <dd>{{ request.user.email }}</dd>
+          <dd>{{ email }}</dd>
         </dl>
 
         <div class="clear"></div>
 
-        <a href="{{ url('password_change') }}">
-          {{ _('Change Password') }}
-        </a>
       </div>
+      {% if mode == 'new' %}
+        <p id="privacy-info">
+          {% trans %}
+            At this time, profiles are only viewable by other Mozillians.
+            Community members may use them to identify and contact you about
+            events, projects and other Mozilla-related activities.
+          {% endtrans %}
+        </p>
 
+        <div class="clear"></div>
+        <div id="optin-container" style="width: 50%">
+          {{ form.errors['optin'] }}
+          {{ form['optin'].label_tag() }}
+          <span class="required" title="{{ _('This field is required.') }}">*</span>
+          {{ form['optin'] }}
+        </div>
+      {% endif %}      
       <div class="clear"></div>
     </div>
 
     <button id="submit" class="button orange">
       {% if registration_flow %}
         {{ _('Next') }}
+      {% elif mode == 'new' %}
+        {{ _('Create Account') }}
       {% else %}
         {{ _('Update') }}
       {% endif %}

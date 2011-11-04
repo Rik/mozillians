@@ -140,9 +140,10 @@ class UserSession(object):
             if assertion and force_dn_pass == False:
 
                 dn = None
-                host = self.request.get_host()
-                sasl_creds = browserid.credentials(assertion, host)
-                log.debug("Going to bind with an assertion=%s and \nhost%s" % (assertion, host))
+                # TODO protocol host port...
+                audience = self.request.get_host()
+                sasl_creds = browserid.credentials(assertion, audience)
+                log.debug("Going to bind with an assertion=%s and \naudience=%s" % (assertion, audience))
 
                 print repr(self.conn.sasl_interactive_bind_s("", sasl_creds))
                 log.debug("Okay, and now are we a new user?")

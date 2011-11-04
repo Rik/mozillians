@@ -40,6 +40,7 @@ TEMPLATE_LOADERS = ('jingo.Loader',) + base.TEMPLATE_LOADERS
 
 TEMPLATE_CONTEXT_PROCESSORS = base.TEMPLATE_CONTEXT_PROCESSORS +\
     ('django_browserid.context_processors.browserid_form',)
+     
 
 MINIFY_BUNDLES = {
     'css': {

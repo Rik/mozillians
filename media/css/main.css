@@ -393,19 +393,19 @@ background-image: -moz-linear-gradient(
     clear: left;
 }
 
-#body-register #privacy-info {
+#body-edit-profile #privacy-info {
     float: right;
     margin-top: 20px;
-    text-align: center;
+    text-align: left;
     width: 47.5%;
 }
 
-#body-register #optin-container label {
+#body-edit-profile #optin-container label {
     float: left;
     width: 275px;
 }
 
-#body-register #id_optin {
+#body-edit-profile #id_optin {
     clear: none;
     top: 3px;
 }

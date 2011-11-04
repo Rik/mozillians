@@ -44,15 +44,16 @@
             </a>
           </li>
           <li><a id="invite" href="{{ url('invite') }}">{{ _('Invite') }}</a></li>
-          <li><a id="logout" href="{{ url('logout') }}?next={{ url('login') }}">{{ _('Log Out') }}</a></li>
+          <li><a id="logout" href="{{ url('logout') }}?next={{ url('home') }}">{{ _('Log Out') }}</a></li>
         {% else %}
-          <li><a id="browserid-login" href="{{ url('login') }}"><img src="{{ MEDIA_URL }}img/browserid_green.png" alt="{{ _('Log in') }}" /></a>
+          <li id="browserid-login"><span>{{ _('Log In') }}</span></a>
               <form id="browserid" action="{{ url('browserid_login') }}" method="POST">
                 {{ csrf() }}
                 {{ browserid_form }}
+                <input id="bid_mode" type="hidden" name="mode" value="" />
               </form>
           </li>
-          <li><a id="register" href="{{ url('register') }}">{{ _('Join Us') }}</a></li>
+          <li id="browserid-register"><span>{{ _('Join Us') }}</span></li>
         {% endif %}
       </ul>
     </nav>
@@ -68,6 +69,7 @@
 </header>
 
 <div id="main">
+  <noscript>{{ _('This website requires JavaScript to be turned on.') }}</noscript>
   <div id="main-content">
     {% block main_content %}{% endblock %}
   </div>

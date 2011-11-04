@@ -10,7 +10,7 @@ import commonware.log
 import jingo
 from tower import ugettext as _
 
-from larper import RegistrarSession
+from larper import RegistrarSession, get_assertion
 from phonebook.models import Invite
 from session_csrf import anonymous_csrf
 from users import forms
@@ -20,10 +20,18 @@ log = commonware.log.getLogger('m.users')
 
 get_invite = lambda c: Invite.objects.get(code=c, redeemed=None)
 
+class Anonymous:
+    def __init__(self):
+        self.unique_id = 0
+
 
 @anonymous_csrf
 def register(request):
-    initial = {}
+    """ TODO... ?code=foo to pre-vouch 
+    Maybe put it into the session?
+    """
+    intent = 'register'
+
     if 'code' in request.GET:
         code = request.GET['code']
         try:
@@ -33,17 +41,29 @@ def register(request):
         except Invite.DoesNotExist:
             log.warning('Bad register code [%s], skipping invite' % code)
 
+    if not 'verified_email' in request.session:
+        log.error("Browserid registration, but no verified email in session")
+        return redirect('home')
+    email = request.session['verified_email']
+    initial = {}
+
     form = forms.RegistrationForm(request.POST or None, initial=initial)
 
     if request.method == 'POST':
         if form.is_valid():
             try:
                 uniq_id = _save_new_user(request, form)
-                return redirect('phonebook.edit_new_profile', uniq_id)
+                return redirect('profile', uniq_id)
             except ldap.CONSTRAINT_VIOLATION:
+                log.error("User already exists")
                 _set_already_exists_error(form)
-    return jingo.render(request, 'registration/register.html',
-                        dict(form=form))
+    else:
+        if 'link' in request.GET:
+            intent = request.GET['link']
+    anonymous = Anonymous()
+
+    return jingo.render(request, 'phonebook/edit_profile.html',
+                        dict(form=form, person=anonymous, mode='new', email=email, intent=intent))
 
 
 def password_change(request):
@@ -108,14 +128,14 @@ def _save_new_user(request, form):
     log the user in and persist their password to the session.
     """
     # Email in the form is the "username" we'll use.
-    username = form.cleaned_data['email']
-    password = form.cleaned_data['password']
+    email = request.session['verified_email']
+    username = email
 
     registrar = RegistrarSession.connect(request)
 
     d = form.cleaned_data
+    d['email'] = email
     uniq_id = registrar.create_person(d)
-
     voucher = None
 
     if d['code']:
@@ -132,7 +152,9 @@ def _save_new_user(request, form):
         invite.redeemer = uniq_id
         invite.save()
 
-    user = auth.authenticate(username=username, password=password)
+    # we need to authenticate them... with their assertion
+    assertion = get_assertion(request)
+    user = auth.authenticate(request=request, assertion=assertion)
     auth.login(request, user)
 
     return uniq_id
