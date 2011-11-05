@@ -5,7 +5,8 @@
 {% block body_classes %}box-content{% endblock %}
 
 {% block main_content %}
-  <form action="" method="POST" enctype="multipart/form-data">
+<form action="{{ url('phonebook.edit_profile') }}"
+      method="POST" enctype="multipart/form-data">
     {{ csrf() }}
 
     {% if mode == 'new' %}
@@ -22,7 +23,7 @@
     {% endif %}
 
     {% if intent == 'login' %}
-      <div class="form-errors">
+      <div class="login-unknown-email">
         <h3>{{ _('Already have a profile?') }}</h3>
         <p>
           {% trans logout=url('logout'),
@@ -45,7 +46,7 @@
         {% for f in ['first_name', 'last_name', 'biography'] %}
           <div id="{{ form[f].name }}-container"
             class="field {{ 'error' if form.errors[f] }}
-            {{ form[f].field.widget.attrs['css_class'] }}">
+            {{ form[f].field.widget.attrs['class'] }}">
 
             {{ form[f].label_tag() }}
 
@@ -66,19 +67,25 @@
             <img alt="{{ _('Your Profile Photo') }}" id="profile-photo"
                  src="/media/img/unknown.png">
           {% else %}
-            <img alt="{{ _('Your Profile Photo') }}" id="profile-photo"
-                 src="{{ url('phonebook.profile_photo', person.unique_id) }}">
+            {{ profile_photo(person) }}
           {% endif %}
+
           {{ form['photo'].label_tag() }}
-
-          {% if form['photo'].field.required %}
-            <span class="required" title="{{ _('This field is required.') }}">
-              *
-            </span>
-          {% endif %}
-
           {{ form.errors['photo'] }}
           {{ form['photo'] }}
+          <div class="clear"></div>
+        </div>
+        <div id="{{ form['groups'].name }}-container"
+          class="field {{ 'error' if form.errors['groups'] }}
+          {{ form['groups'].field.widget.attrs['class'] }}">
+
+          {{ form['groups'].label_tag() }}
+
+          {{ form.errors['groups'] }}
+
+          <div class="clear"></div>
+
+          {{ form['groups'] }}
 
           <div class="clear"></div>
         </div>
@@ -90,15 +97,9 @@
         {% for f in ['irc_nickname'] %}
           <div id="{{ form[f].name }}-container"
             class="field {{ 'error' if form.errors[f] }}
-            {{ form[f].field.widget.attrs['css_class'] }}">
+            {{ form[f].field.widget.attrs['class'] }}">
 
             {{ form[f].label_tag() }}
-
-            {% if form[f].field.required %}
-              <span class="required" title="{{ _('This field is required.') }}">
-                *
-              </span>
-            {% endif %}
 
             {{ form.errors[f] }}
             {{ form[f] }}
@@ -154,15 +155,10 @@
 
   {% if user.username == person.username %}
     <div id="manage-profile">
-      <form action="{{ url('phonebook.delete_profile') }}" method="POST"
-        class="profile-action">
-        {{ csrf() }}
-
-        {{ delete_form }}
-        {% if not registration_flow %}
-          <button class="button red small">{{ _('Delete Profile') }}</button>
-        {% endif %}
-      </form>
+      <a class="button red small" href="{{ url('confirm_delete') }}"
+         id="delete-profile">
+        {{ _('Delete Profile') }}
+      </a>
 
       <div class="clear"></div>
     </div>

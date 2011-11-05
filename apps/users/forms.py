@@ -1,37 +1,38 @@
 from django import forms
-from django.forms.util import ErrorList
-from django.template import loader
-from django.utils.http import int_to_base36
 from django.contrib import auth
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.sites.models import get_current_site
+from django.forms.util import ErrorList
+from django.template import loader
+from django.utils.http import int_to_base36
 
 import commonware.log
-from tower import ugettext_lazy as _lazy
 
-from phonebook.forms import ProfileForm
+import happyforms
+from tower import ugettext as _, ugettext_lazy as _lazy
 
 import larper
+from phonebook.forms import ProfileForm
+from users.models import UserProfile
 
 log = commonware.log.getLogger('m.users')
 
 
-class AuthenticationForm(forms.Form):
-    username = forms.CharField(required=True)
-    password = forms.CharField(max_length=255, required=True)
+class AuthenticationForm(auth.forms.AuthenticationForm):
+    def __init__(self, *args, **kwargs):
+        """Override the username field to prevent issues with maxlength."""
+        super(AuthenticationForm, self).__init__(*args, **kwargs)
 
+        self.fields['username'] = forms.CharField(
+                max_length=255, required=True)
 
 class RegistrationForm(ProfileForm):
-    #email = forms.EmailField(label=_lazy(u'Primary Email'), required=True)
-
     code = forms.CharField(widget=forms.HiddenInput, required=False)
 
-    #recaptcha = captcha.fields.ReCaptchaField()
     optin = forms.BooleanField(
             label=_lazy(u"I'm okay with you handling this info as you "
                         u'explain in your privacy policy.'),
-            widget=forms.CheckboxInput(
-            attrs=dict(css_class='checkbox')))
+            widget=forms.CheckboxInput(attrs={'class': 'checkbox'}))
 
     def clean(self):
         super(RegistrationForm, self).clean()
@@ -44,13 +45,21 @@ class RegistrationForm(ProfileForm):
 class PasswordChangeForm(auth.forms.PasswordChangeForm):
     """Do LDAP goodness instead of RDBMS goodness."""
 
+    def __init__(self, *args, **kwargs):
+        """Override the __init__ method to change form labels"""
+        super(PasswordChangeForm, self).__init__(*args, **kwargs)
+
+        self.fields['old_password'].label = _lazy(u'Verify your old password')
+        self.fields['new_password1'].label = _lazy(u'Enter a new password')
+        self.fields['new_password2'].label = _lazy(u'Confirm new password')
+
     def clean_old_password(self):
         """
         Do a bind with email and old_password to make sure old
         credentials are valid.
         """
         password = self.cleaned_data.get('old_password')
-        user = auth.authenticate(username=self.user.username, 
+        user = auth.authenticate(username=self.user.username,
                                  password=password)
 
         if user:
@@ -80,7 +89,8 @@ class PasswordResetForm(auth.forms.PasswordResetForm):
         Validates that an active user exists with the given email address.
         """
         email = self.cleaned_data["email"]
-        self.users_cache = auth.models.User.objects.filter(email__iexact=email)
+        self.users_cache = auth.models.User.objects.filter(
+                username__iexact=email)
         # NOTICE: If we ever drop django-auth-ldap, this Form will break.
         if not len(self.users_cache):
             msg = _lazy("That e-mail address doesn't have an associated "

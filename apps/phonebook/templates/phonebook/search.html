@@ -8,23 +8,32 @@
 
 {% block page_title %}{{ _('Search Results') }}{% endblock %}
 {% block body_id %}search{% endblock %}
-{% block body_classes %}box-content{% endblock %}
+{% block body_classes %}box-content search-page{% endblock %}
 
 {% block main_content %}
   <h1>{{ _('Search') }}</h1>
 
   <div class="blue-pastels">
-    <form method="GET" id="search-form">
+    <form method="GET" id="search-form" action="{{ url('phonebook.search') }}">
       <input type="search" name="q" id="q"
-        placeholder="{{ _('Name, IRC Nick, or Email') }}"
-        value="{% if form.cleaned_data %}{{form.cleaned_data.q}}{% endif %}"
-        autofocus>
-        <button type="submit" class="button orange small">
-          {{ _('Search') }}
-        </button>
+        placeholder="{{ _('Name, IRC Nick, or Email') }}" autofocus
+        value="{% if form.cleaned_data %}{{ form.cleaned_data.q }}{% endif %}">
+      <input type="hidden" name="limit" id="limit" value="{{ limit }}">
+      <button type="submit" class="button orange small">
+        {{ _('Search') }}
+      </button>
     </form>
 
-    {% if size_exceeded_error %}
+    {% if not form.cleaned_data %}
+      {% trans %}
+        <h2>Search For a Mozillian</h2>
+
+        <p>
+          You can search for another Mozillian using their name, email, or
+          nickname.
+        </p>
+      {% endtrans %}
+    {% elif size_exceeded_error %}
       {% trans %}
         <h2>Too Many Search Results</h2>
 
@@ -35,27 +44,7 @@
       {% endtrans %}
     {% else %}
       {% for person in people %}
-        {# TODO We should reuse microformats like Domesday prototype #}
-        <div class="result">
-          <img src="{{ url('phonebook.profile_photo', person.unique_id) }}"
-            alt="{{ _('Profile photo') }}" class="profile-photo">
-
-          <h2><a href="{{url('profile', person.unique_id) }}">
-            {{ person.full_name }}
-          </a></h2>
-
-          {% if person.voucher_unique_id %}
-            <h3 title="{{ _('This user is a vouched Mozillian.') }}">
-              {{ _('Mozillian') }}
-            </h3>
-          {% else %}
-            <h3 title="{{ _('This user has not yet been vouched.') }}">
-              {{ _('Pending') }}
-            </h3>
-          {% endif %}
-
-          <div class="clear"></div>
-        </div>
+        {{ search_result(person) }}
       {% else %}
         <p id="not-found">
           {% trans invite=url('invite') %}
@@ -65,6 +54,18 @@
           {% endtrans %}
         </p>
       {% endfor %}
+      
+      {% if show_pagination %}
+        <div class="pagination">
+          {% for page in people.paginator.page_range %}
+            {% if page == people.number %}
+              <span>{{ page }}</span>
+            {% else %}
+              <a href="{{ url('phonebook.search')|urlparams(q=form.cleaned_data.q, page=page, limit=limit) }}">{{ page }}</a>
+            {% endif %}
+          {% endfor %}
+        </div>
+      {% endif %}
     {% endif %}
   </div>
 {% endblock %}

@@ -2,19 +2,22 @@ import datetime
 import ldap
 
 from django import http
-from django.shortcuts import redirect
-from django.contrib import auth
+from django.shortcuts import get_object_or_404, redirect, render
+from django.conf import settings
+from django.contrib import auth, messages
+from django.contrib.auth import views as auth_views
 from django.contrib.auth.tokens import default_token_generator
+from django.core.mail import send_mail
 
 import commonware.log
-import jingo
+from funfactory.urlresolvers import reverse
 from tower import ugettext as _
 
 from larper import RegistrarSession, get_assertion
 from phonebook.models import Invite
 from session_csrf import anonymous_csrf
 from users import forms
-from funfactory.urlresolvers import reverse
+from users.models import UserProfile
 
 log = commonware.log.getLogger('m.users')
 
@@ -25,6 +28,42 @@ class Anonymous:
         self.unique_id = 0
 
 
+def _send_confirmation_email(user):
+    """This sends a confirmation email to the user."""
+    subject = _('Confirm your account')
+    message = (_("Please confirm your Mozillians account:\n\n %s") %
+               user.get_profile().get_confirmation_url())
+    send_mail(subject, message, 'no-reply@mozillians.org', [user.username])
+
+
+def send_confirmation(request):
+    user = request.GET['user']
+    user = get_object_or_404(auth.models.User, username=user)
+    _send_confirmation_email(user)
+    return render(request, 'users/confirmation_sent.html')
+
+
+def confirm(request):
+    """Confirms a user.
+
+    1. Recognize the code or 404.
+    2. On recognition, mark user as confirmed.
+    """
+    code = request.GET['code']
+    profile = get_object_or_404(UserProfile, confirmation_code=code)
+    profile.is_confirmed = True
+    profile.save()
+    return render(request, 'users/confirmed.html')
+
+
+@anonymous_csrf
+def login(request, **kwargs):
+    """Login view that wraps Django's login but redirects auth'd users."""
+    return (auth_views.login(request, **kwargs)
+            if request.user.is_anonymous()
+            else redirect(reverse('profile', args=[request.user.unique_id])))
+
+
 @anonymous_csrf
 def register(request):
     """ TODO... ?code=foo to pre-vouch 
@@ -32,6 +71,10 @@ def register(request):
     """
     intent = 'register'
 
+    if request.user.is_authenticated():
+        return redirect(reverse('profile', args=[request.user.unique_id]))
+
+    initial = {}
     if 'code' in request.GET:
         code = request.GET['code']
         try:
@@ -45,7 +88,6 @@ def register(request):
         log.error("Browserid registration, but no verified email in session")
         return redirect('home')
     email = request.session['verified_email']
-    initial = {}
 
     form = forms.RegistrationForm(request.POST or None, initial=initial)
 
@@ -64,7 +106,6 @@ def register(request):
 
     return jingo.render(request, 'phonebook/edit_profile.html',
                         dict(form=form, person=anonymous, mode='new', email=email, intent=intent))
-
 
 def password_change(request):
     """
@@ -114,10 +155,7 @@ def password_reset_confirm(request, uidb36=None, token=None):
 
 
 def password_reset_check_mail(request):
-    return jingo.render(
-        request,
-        'registration/password_reset_check_mail.html',
-        dict())
+    return render(request, 'registration/password_reset_check_mail.html')
 
 
 def _save_new_user(request, form):
@@ -151,10 +189,20 @@ def _save_new_user(request, form):
         invite.redeemed = datetime.datetime.now()
         invite.redeemer = uniq_id
         invite.save()
+    # auto vouch moz.com:
+    elif any(username.endswith('@' + x) for x in settings.AUTO_VOUCH_DOMAINS):
+        registrar.record_vouch(voucher='ZUUL', vouchee=uniq_id)
 
     # we need to authenticate them... with their assertion
     assertion = get_assertion(request)
     user = auth.authenticate(request=request, assertion=assertion)
+
+    # TODO.. this is in HEAD, can we get rid of it?
+    # Should never happen
+    if not user or not user.is_authenticated():
+        msg = 'Authentication for new user (%s) failed' % username
+        # TODO: make this a unique exception.
+        raise Exception(msg)
     auth.login(request, user)
 
     return uniq_id
@@ -165,4 +213,4 @@ def _set_already_exists_error(form):
     data = dict(email=form.cleaned_data['email'])
     del form.cleaned_data['email']
     error = _(msg % data)
-    form._errors['username'] = form.error_class([error])
+    form._errors['email'] = form.error_class([error])

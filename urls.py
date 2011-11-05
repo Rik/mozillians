@@ -1,33 +1,35 @@
 from django.conf import settings
-from django.conf.urls.defaults import include, patterns
-
+from django.conf.urls.defaults import include, patterns, url
 from django.contrib import admin
-
-import jingo
-
+from django.shortcuts import render
+from django.views.decorators.cache import cache_page
+from django.views.i18n import javascript_catalog
 
 admin.autodiscover()
 
 
-def _error_page(request, status):
+def error_page(request, template, status=None):
+    """Render error templates, found in the root /templates directory.
+
+    If no status parameter is explcitedly passed, this function assumes
+    your HTTP status code is the same as your template name (i.e. passing
+    a template=404 will render 404.html with the HTTP status code 404).
     """
-    Render error pages with jinja2. Error templates are in the root
-    /templates directory.
-    """
-    return jingo.render(request, '%d.html' % status, status=status)
+    return render(request, '%d.html' % template, status=(status or template))
 
 
-handler404 = lambda r: _error_page(r, 404)
-handler500 = lambda r: _error_page(r, 500)
-handler_csrf = lambda r, cb=None: jingo.render(r, 'csrf_error.html', status=400)
-
+handler404 = lambda r: error_page(r, 404)
+handler500 = lambda r: error_page(r, 500)
+handler_csrf = lambda r, cb=None: error_page(r, 'csrf_error', status=400)
 
 urlpatterns = patterns('',
-    (r'', include('landing.urls')),
     (r'', include('phonebook.urls')),
     (r'', include('users.urls')),
-    (r'^admin/', include(admin.site.urls)),
     (r'', include('browserid.urls')),
+    (r'', include('groups.urls')),
+    (r'^admin/', include(admin.site.urls)),
+    url(r'^jsi18n/$', cache_page(60 * 60 * 24 * 365)(javascript_catalog),
+        {'domain': 'javascript', 'packages': ['mozillians']}, name='jsi18n'),
 )
 
 # In DEBUG mode, serve media files through Django, and serve error pages

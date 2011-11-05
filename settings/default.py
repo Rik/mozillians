@@ -19,11 +19,11 @@ LOGGING = {
     },
 }
 
+## L10n
 LOCALE_PATHS = [path('locale')]
 
-
 # Accepted locales
-PROD_LANGUAGES = ('en-US', 'de', 'fr')
+PROD_LANGUAGES = ('de', 'en-US', 'es', 'fr', 'nl', 'pl', 'sl', 'zh-TW')
 
 # List of RTL locales known to this project. Subset of LANGUAGES.
 RTL_LANGUAGES = ()  # ('ar', 'fa', 'fa-IR', 'he')
@@ -42,9 +42,15 @@ TEMPLATE_CONTEXT_PROCESSORS = base.TEMPLATE_CONTEXT_PROCESSORS +\
     ('django_browserid.context_processors.browserid_form',)
      
 
+JINGO_EXCLUDE_APPS = [
+    'admin',
+]
+
 MINIFY_BUNDLES = {
     'css': {
         'common': (
+            'css/jquery-ui-1.8.16.custom.css',
+            'js/libs/tag-it/css/jquery.tagit.css',
             'css/mozilla-base.css',
             'css/main.css',
         ),
@@ -52,16 +58,23 @@ MINIFY_BUNDLES = {
     'js': {
         'common': (
             'js/libs/jquery-1.4.4.min.js',
-            'js/webtrends.js',
+            'js/libs/jquery-ui-1.8.7.custom.min.js',
+            'js/libs/tag-it/js/tag-it.js',
+            'js/libs/validation/validation.js',
             'js/main.js',
+            'js/groups.js',
         ),
     }
 }
 
-
 MIDDLEWARE_CLASSES = list(base.MIDDLEWARE_CLASSES) + [
+    'commonware.response.middleware.StrictTransportMiddleware',
+    'phonebook.middleware.PermissionDeniedMiddleware',
     'larper.middleware.LarperMiddleware',
 ]
+
+# StrictTransport
+STS_SUBDOMAINS = True
 
 # OpenLDAP
 LDAP_USERS_GROUP = 'ou=people,dc=mozillians,dc=org'
@@ -83,14 +96,8 @@ AUTH_LDAP_PROFILE_ATTR_MAP = {"home_directory": "homeDirectory",
 AUTH_LDAP_ALWAYS_UPDATE_USER = False
 
 
-INSTALLED_APPS = list(base.INSTALLED_APPS) + [
-    'landing',
-    'phonebook',
-    'users',
-    'larper',
-    'browserid',
-    'django_browserid',  # We use forms, etc but not the auth backend
-
+#TODO...
+""" 1.0 HEAD
     # Local apps
     #'jingo_minify',
     #'tower',  # for ./manage.py extract (L10n)
@@ -99,6 +106,20 @@ INSTALLED_APPS = list(base.INSTALLED_APPS) + [
     #'django.contrib.auth',
     # Uncomment the next line to enable admin documentation:
     # 'django.contrib.admindocs',
+"""
+
+INSTALLED_APPS = list(base.INSTALLED_APPS) + [
+    'phonebook',
+    'users',
+    'groups',
+    'larper',
+    'browserid',
+    'django_browserid',  # We use forms, etc but not the auth backend
+    'jingo_minify',
+    'tower',
+    'cronjobs',
+    'django.contrib.admin',
+    'django.contrib.auth',
 ]
 
 ## Auth
@@ -133,4 +154,8 @@ USERPICS_PATH = pre.NETAPP_STORAGE + '/userpics'
 #: Userpics will accessed here.
 USERPICS_URL = pre.UPLOAD_URL + '/userpics'
 
+AUTH_PROFILE_MODULE = 'users.UserProfile'
 
+MAX_PHOTO_UPLOAD_SIZE = 8 * (1024 ** 2)
+
+AUTO_VOUCH_DOMAINS = ('mozilla.com', 'mozilla.org', 'mozillafoundation.org')

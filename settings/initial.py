@@ -16,8 +16,10 @@ NETAPP_STORAGE = path('tmp')
 #: Base URL for uploaded files. Could be a CDN.
 UPLOAD_URL = '/uploads'
 
+#: This is the base URL for the current instance of the site.
+SITE_URL = 'http://mozillians.org'
+
 try:
-    from settings.pre_local import *
+    from settings.initial_local import *
 except ImportError:
     pass
-

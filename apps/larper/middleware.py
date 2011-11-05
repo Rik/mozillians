@@ -1,4 +1,8 @@
 from django.core.exceptions import ImproperlyConfigured
+from django.db.models.signals import pre_save
+from django.dispatch import receiver
+
+from django.contrib.auth.models import User
 from django.contrib.auth.signals import user_logged_in
 
 import commonware.log
@@ -18,6 +22,11 @@ def handle_login(sender, **kwargs):
         request.user.unique_id = request.session['unique_id']
 
 user_logged_in.connect(handle_login)
+
+
+@receiver(pre_save, sender=User)
+def handle_pre_save(sender, instance, **kwargs):
+    instance.email = instance.username
 
 
 class LarperMiddleware(object):
@@ -57,7 +66,9 @@ def is_vouched(request):
     def f():
         if not hasattr(user, 'person'):
             directory = UserSession.connect(request)
+            # Stale data okay
             user.person = directory.get_by_unique_id(user.unique_id)
+        # Presence of voucher DN is enough, don't validate
         return bool(user.person.voucher_unique_id)
     return f
 

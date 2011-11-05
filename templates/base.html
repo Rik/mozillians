@@ -13,6 +13,8 @@
 
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="apple-touch-icon" href="{{ MEDIA_URL }}apple-touch-icon.png">
+  <link rel="search" type="application/opensearchdescription+xml" 
+        title="{{ _('Mozillians') }}" href="{{ url('phonebook.search_plugin') }}">
 
   {% block site_css %}
     {{ css('common') }}
@@ -25,7 +27,8 @@
 
 <body id="body-{% block body_id %}mozillians{% endblock %}"
   class="{% block body_classes %}{% endblock %}
-  {{ 'auth' if user.is_authenticated() else 'anon' }}">
+  {{ 'auth' if user.is_authenticated() else 'anon' }}"
+  data-locale="{{ LANG }}">
 
 <ul id="skip" class="hide">
   <li><a href="#main">{{ _('Skip to Content') }}</a></li>
@@ -43,7 +46,9 @@
               {{ _('Profile') }}
             </a>
           </li>
-          <li><a id="invite" href="{{ url('invite') }}">{{ _('Invite') }}</a></li>
+          {% if user|vouched %}
+            <li><a id="invite" href="{{ url('invite') }}">{{ _('Invite') }}</a></li>
+          {% endif %}
           <li><a id="logout" href="{{ url('logout') }}?next={{ url('home') }}">{{ _('Log Out') }}</a></li>
         {% else %}
           <li id="browserid-login"><span>{{ _('Log In') }}</span></a>
@@ -58,19 +63,34 @@
       </ul>
     </nav>
 
-    {% block search %}<form id="quick-search" action="{{ url('phonebook.search') }}"
-        method="GET">
-      <input type="search" id="q" name="q"
-        placeholder="{{ _('Name, IRC Nick, or Email') }}" autofocus>
-      <input type="image" src="{{ MEDIA_URL }}img/mozilla/search-submit.png"
-        alt="{{ _('Search') }}" id="quick-search-btn">
-    </form>{% endblock %}
+    {% if user.is_authenticated() and user|vouched %}
+      {% block search %}
+        <form id="quick-search" action="{{ url('phonebook.search') }}"
+              method="GET">
+          <input type="search" id="q" name="q"
+                 placeholder="{{ _('Name, IRC Nick, or Email') }}">
+          <button alt="{{ _('Search') }}" type="submit" id="quick-search-btn">{{ _('Search') }}</button>
+        </form>
+      {% endblock %}
+    {% endif %}
   </div>
 </header>
 
 <div id="main">
   <noscript>{{ _('This website requires JavaScript to be turned on.') }}</noscript>
   <div id="main-content">
+    {% block messages %}
+      {% if messages %}
+        <ul id="messages">
+          {% for message in messages %}
+            <li {% if message.tags %}class="{{ message.tags }}"{% endif %}>
+              {{ message }}
+            </li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    {% endblock messages %}
+
     {% block main_content %}{% endblock %}
   </div>
 </div>
@@ -91,11 +111,11 @@
             {{ _('About Mozillians') }}
           </a>
           &nbsp;|&nbsp;
-          <a href="#get-involved">
+          <a href="https://wiki.mozilla.org/Mozillians#Get_Involved">
             {{ _('Get Involved') }}
           </a>
-          <br id="footer-link-spacer">
-          <a href="http://mozilla.com/privacy-policy.html">
+          <span id="footer-link-spacer"><br></span>
+          <a href="http://www.mozilla.org/{{ LANG }}/privacy-policy.html">
             {{ _('Privacy Policy') }}
           </a>
           &nbsp;|&nbsp;
@@ -130,11 +150,13 @@
 </div>
 
 {% block site_js %}
+  <script src="{{ url('jsi18n') }}"></script>
   {{ js('common') }}
+  {% include "includes/webtrends_desktop.html" %}
 {% endblock %}
 {% block js %}{% endblock %}
 
-{# include "includes/webtrends_desktop.html" #}
+{# TODO webtrends gone? #}
 <script src="https://browserid.org/include.js" type="text/javascript"></script>
 </body>
 </html>

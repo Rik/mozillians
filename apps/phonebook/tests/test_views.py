@@ -1,62 +1,81 @@
 from uuid import uuid4
 
 from django import test
+from django.contrib.auth.models import User
 
+import test_utils
 from nose.tools import eq_
 from pyquery import PyQuery as pq
-import test_utils
 
-from funfactory.urlresolvers import reverse
+from funfactory.urlresolvers import set_url_prefix, reverse
+from phonebook.tests import (LDAPTestCase, AMANDA_NAME, AMANDEEP_NAME,
+                             AMANDEEP_VOUCHER, MOZILLIAN, PENDING,
+                             OTHER_MOZILLIAN, PASSWORD, mozillian_client)
 from phonebook.views import UNAUTHORIZED_DELETE
 
-# The test data (below in module constants) must matches data in
-# directory/mozillians-bulk-test-data.ldif
-# You must have run x-rebuild before these tests
-MOZILLIAN = dict(email='u000001@mozillians.org', uniq_id='7f3a67u000001')
-PENDING = dict(email='u000003@mozillians.org', uniq_id='7f3a67u000003')
-OTHER_MOZILLIAN = dict(email='u000098@mozillians.org', uniq_id='7f3a67u000098')
-AMANDEEP_NAME = 'Amandeep McIlrath'
-AMANDEEP_VOUCHER = '7f3a67u000001'
-AMANDA_NAME = 'Amanda Younger'
-PASSWORD = 'secret'
 
+class TestDeleteUser(LDAPTestCase):
+    """Separate test class used to test account deletion flow.
 
-class TestViews(test_utils.TestCase):
-    def setUp(self):
+    We create a separate class to delete a user because other tests depend
+    on Mozillian users existing.
+    """
+    def test_confirm_delete(self):
+        """Test the account deletion flow, including confirmation.
+
+        A user should not be presented with a form/link that allows them to
+        delete their account without a confirmation page. Once they access that
+        page, they should be presented with a link to "go back" to their
+        profile or to permanently delete their account.
+
+        This test is abstracted away to a generic user deletion flow so
+        we can test both non-vouched and vouched user's ability to delete
+        their own profile.
         """
-        We'll use multiple clients at the same time.
-        """
-        self.anon_client = self.client
-        self.pending_client = self._pending_user()
-        self.mozillian_client = self._mozillian_user()
+        for user in [MOZILLIAN, PENDING]:
+            self._delete_flow(user)
 
-    def _pending_user(self):
-        client = test.Client()
-        # We can't use client.login for these tests
-        url = reverse('login')
-        data = dict(username=PENDING['email'], password=PASSWORD)
-        client.post(url, data, follow=True)
+    def _delete_flow(self, user):
+        """Private method used to walk through account deletion flow."""
+        client = mozillian_client(user['email'])
+        uniq_id = user['uniq_id']
 
-        # HACK Something is seriously hozed here...
-        # First visit to /login always fails, so we make
-        # second request... WTF
-        client = test.Client()
-        url = reverse('login')
-        r = client.post(url, data, follow=True)
-        eq_(PENDING['email'], str(r.context['user']))
-        return client
+        r = client.get(reverse('phonebook.edit_profile'))
+        doc = pq(r.content)
 
-    def _mozillian_user(self):
+        # Make sure there's a link to a confirm deletion page, and nothing
+        # pointing directly to the delete URL.
+        eq_(reverse('confirm_delete'), doc('#delete-profile').attr('href'),
+            'We see a link to a confirmation page.')
+        self.assertFalse(any((reverse('phonebook.delete_profile') in el.action)
+                              for el in doc('#main form')),
+            "We don't see a form posting to the account delete URL.")
+
+        # Follow the link to the deletion confirmation page.
+        r = client.get(doc('#delete-profile').attr('href'))
+
+        # Test that we can go back (i.e. cancel account deletion).
+        doc = pq(r.content)
+        eq_(reverse('phonebook.edit_profile'),
+            doc('#cancel-action').attr('href'))
+
+        # Test that account deletion works.
+        delete_url = doc('#delete-action').closest('form').attr('action')
+        r = client.post(delete_url, {'unique_id': uniq_id}, follow=True)
+        eq_(200, r.status_code)
+        self.assertFalse(_logged_in_html(r))
+
+        # Make sure the user can't login anymore
         client = test.Client()
-        # We can't use c.login for these tests
-        url = reverse('login')
-        data = dict(username=MOZILLIAN['email'], password=PASSWORD)
-        r = client.post(url, data, follow=True)
-        eq_(MOZILLIAN['email'], str(r.context['user']))
-        return client
+        data = dict(username=user['email'], password=PASSWORD)
+        r = client.post(reverse('login'), data, follow=True)
+        self.assertFalse(_logged_in_html(r))
+
+
+class TestViews(LDAPTestCase):
 
     def test_anonymous_home(self):
-        r = self.anon_client.get('/', follow=True)
+        r = self.client.get('/', follow=True)
         self.assertEquals(200, r.status_code)
         doc = pq(r.content)
         login = reverse('login')
@@ -83,22 +102,24 @@ class TestViews(test_utils.TestCase):
 
     def test_anonymous_or_pending_search(self):
         search = reverse('phonebook.search')
-        for client in [self.anon_client, self.pending_client]:
-            r = client.get(search, dict(q='Am'), follow=True)
-            peeps = r.context['people']
-            eq_(0, len(peeps),
-                'Search should fail for interlopers')
+
+        r = self.client.get(search, dict(q='Am'), follow=True)
+        self.assertFalse('people' in r.context)
+
+        r = self.pending_client.get(search, dict(q='Am'), follow=True)
+        eq_(r.context.get('people', []), [])
 
     def test_mozillian_search(self):
         url = reverse('phonebook.search')
         r = self.mozillian_client.get(url, dict(q='Am'))
+        rs = self.mozillian_client.get(url, dict(q=' Am'))
         peeps = r.context['people']
+        peeps_ws = rs.context['people']
         saw_amandeep = saw_amanda = False
 
         for person in peeps:
             if person.full_name == AMANDEEP_NAME:
-                eq_(AMANDEEP_VOUCHER,
-                    person.voucher_unique_id,
+                eq_(AMANDEEP_VOUCHER, person.voucher_unique_id,
                     'Amandeep is a Mozillian')
                 saw_amandeep = True
             elif person.full_name == AMANDA_NAME:
@@ -107,10 +128,48 @@ class TestViews(test_utils.TestCase):
                 saw_amanda = True
             if saw_amandeep and saw_amanda:
                 break
+        self.assertEqual(peeps[0].full_name, peeps_ws[0].full_name)
         self.assertTrue(saw_amandeep, 'We see Mozillians')
         self.assertTrue(saw_amanda, 'We see Pending')
 
+    def test_mozillian_search_pagination(self):
+        """
+        Tests the pagination on search.
+        First assumes no page is passed, but valid limit is passed
+        Second assumes invalid page is passed, no limit is passed
+        Third assumes valid page is passed, no limit is passed
+        Fourth assumes valid page is passed, valid limit is passed
+        """
+        url = reverse('phonebook.search')
+        r = self.mozillian_client.get(url, dict(q='Amand', limit='1'))
+        peeps = r.context['people']
+        self.assertEqual(len(peeps), 1)
+
+        r = self.mozillian_client.get(url, dict(q='Amand', page='test'))
+        peeps = r.context['people']
+        self.assertEqual(len(peeps), 2)
+    
+        r = self.mozillian_client.get(url, dict(q='Amand', page='1'))
+        peeps = r.context['people']
+        self.assertEqual(len(peeps), 2)
+ 
+        r = self.mozillian_client.get(url, dict(q='Amand', page='test', limit='1'))
+        peeps = r.context['people']
+        self.assertEqual(len(peeps), 1)
+
+        r = self.mozillian_client.get(url, dict(q='Amand', page='test', limit='x'))
+        peeps = r.context['people']
+        self.assertEqual(len(peeps), 2)
+
+        r = self.mozillian_client.get(url, dict(q='Amand', page='test', limit='-3'))
+        peeps = r.context['people']
+        self.assertEqual(len(peeps), 2)
+    
     def test_mozillian_sees_mozillian_profile(self):
+        # HACK: This user isn't made by default. WTF?
+        User.objects.create(username=OTHER_MOZILLIAN['email'],
+                            email=OTHER_MOZILLIAN['email'])
+
         url = reverse('profile', args=[OTHER_MOZILLIAN['uniq_id']])
         r = self.mozillian_client.get(url)
         eq_(AMANDEEP_NAME, r.context['person'].full_name)
@@ -136,7 +195,7 @@ class TestViews(test_utils.TestCase):
         # test for vouch form...
         self.assertTrue(profile.context['vouch_form'], 'Newb needs a voucher')
         vouch_url = reverse('phonebook.vouch')
-        data = dict(voucher=MOZILLIAN['uniq_id'], vouchee=newbie_uniq_id)
+        data = dict(vouchee=newbie_uniq_id)
         vouched_profile = moz_client.post(vouch_url, data, follow=True)
         eq_(200, vouched_profile.status_code)
         eq_('phonebook/profile.html', vouched_profile.templates[0].name)
@@ -171,8 +230,7 @@ class TestViews(test_utils.TestCase):
         # do all then reset
         newbie_uniq_id, newbie_client = _create_new_user()
         profile_url = reverse('profile', args=[newbie_uniq_id])
-        edit_profile_url = reverse('phonebook.edit_profile',
-                                   args=[newbie_uniq_id])
+        edit_profile_url = reverse('phonebook.edit_profile')
         # original
         r = newbie_client.get(profile_url)
         newbie = r.context['person']
@@ -201,6 +259,34 @@ class TestViews(test_utils.TestCase):
         r = newbie_client.post(delete_url, data, follow=True)
         eq_(200, r.status_code, 'A Mozillian can delete their own account')
 
+    def test_my_profile(self):
+        """Are we cachebusting our picture?"""
+        profile = reverse('profile', args=[MOZILLIAN['uniq_id']])
+        r = self.mozillian_client.get(profile)
+        doc = pq(r.content)
+        assert '?' in doc('#profile-photo').attr('src')
+
+
+class TestOpensearchViews(test_utils.TestCase):
+    """Tests for the OpenSearch plugin, accessible to anonymous visitors"""
+    def test_search_plugin(self):
+        """The plugin loads with the correct mimetype."""
+        response = self.client.get(reverse('phonebook.search_plugin'))
+        eq_(200, response.status_code)
+        assert 'expires' in response
+        eq_('application/opensearchdescription+xml', response['content-type'])
+
+    def test_localized_search_plugin(self):
+        """Every locale gets its own plugin!"""
+        response = self.client.get(reverse('phonebook.search_plugin'))
+        assert '/en-US/search' in response.content
+
+        # Prefixer and its locale are sticky; clear it before the next request
+        set_url_prefix(None)
+        response = self.client.get(reverse('phonebook.search_plugin',
+                                   prefix='/fr/'))
+        assert '/fr/search' in response.content
+
 
 def _logged_in_html(response):
     doc = pq(response.content)
@@ -218,7 +304,21 @@ def _create_new_user():
                   last_name='McPal',
                   optin='True')
     r = newbie_client.post(reg_url, params, follow=True)
-    eq_('phonebook/edit_profile.html', r.templates[0].name)
+    eq_('registration/login.html', r.templates[0].name)
+
+    u = User.objects.filter(email=params['email'])[0].get_profile()
+    u.is_confirmed = True
+    u.save()
+
+    r = newbie_client.post(reverse('login'),
+                           dict(username=params['email'],
+                                password=params['password']),
+                           follow=True)
+
+    r = newbie_client.get(reverse('profile',
+                                  args=[r.context['user'].unique_id]))
+    eq_('phonebook/profile.html', r.templates[0].name)
+
     newbie_uniq_id = r.context['person'].unique_id
     if not newbie_uniq_id:
         msg = 'New user should be logged in and have a uniqueIdentifier'

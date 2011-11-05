@@ -12,6 +12,9 @@
     {{ csrf() }}
 
     <div class="blue-pastels">
+      {% for error in form.non_field_errors() %}
+        <p class="form-errors error">{{ error|safe }}</p>
+      {% endfor %}
       <div id="username-container"
         class="field {{ 'error' if form.errors['username'] }}">
         <label for="id_username">{{ _('Email') }}</label>

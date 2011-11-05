@@ -57,7 +57,7 @@ body {
     color: #fff;
     display: inline;
     float: left;
-    font-family: MetaBold, 'Trebuchet MS', sans-serif;
+    font-family: MetaBold, 'Trebuchet MS', Helvetica, Arial, "DejaVu Sans", sans-serif;
     font-size: 50px;
     font-weight: bold;
     letter-spacing: -2px;
@@ -76,7 +76,7 @@ body {
 
 #header-contents {
     bottom: 0;
-    padding-left: 270px;
+    padding-left: 305px;
     position: absolute;
     text-align: right;
 }
@@ -142,7 +142,13 @@ body {
 }
 
 #quick-search-btn {
-    left: -16px;
+    background: url(../img/mozilla/search-submit.png) 2px 50% no-repeat;
+    left: -18px;
+    width: 42px;
+    height: 23px;
+    border: 0px;
+    font-size: 1px;
+    text-indent: -9999px;
     position: relative;
     vertical-align: middle;
     z-index: 1;
@@ -158,8 +164,6 @@ body {
     margin: 105px 0 0 6%;
     padding: 25px 0 50px 64px;
     position: relative;
-    padding-right: 14%;
-    height: 1%;
 }
 
 #footer h1, #footer h2, #footer h3, #footer h4, #footer h5, #footer h6,
@@ -190,7 +194,8 @@ body {
 }
 
 #footer-link-spacer {
-    line-height: 50px;
+    display: block;
+    height: 20px;
 }
 
 #copyright {
@@ -212,7 +217,7 @@ body {
     font-size: 12px;
     margin: 16px 0 0 15px;
     position: absolute;
-    right: 14%;
+    right: 5%;
 }
 
 #footer-wrap {

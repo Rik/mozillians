@@ -41,6 +41,7 @@ from ldap.modlist import addModlist, modifyModlist
 
 from django.conf import settings
 from django.core import signing
+from django.contrib.auth.models import User
 
 import commonware.log
 
@@ -104,6 +105,10 @@ KNOWN_SERVICE_URIS = [
 
 KNOWN_USER = re.compile('dn:uniqueIdentifier=([^,]*),ou=people,dc=mozillians,dc=org')
 NEW_USER   = re.compile('dn:uid=([^,]*),cn=browser-id,cn=auth')
+PEEP_SRCH_FLTR = '(&(objectClass=mozilliansPerson)(|(cn=*%s*)(mail=*%s*)))'
+IRC_SRCH_FLTR = """(&(objectClass=mozilliansLink)(mozilliansServiceID=*%s*)
+                     (mozilliansServiceURI=irc://irc.mozilla.org/))"""
+
 
 class UserSession(object):
     """
@@ -117,8 +122,6 @@ class UserSession(object):
     """
     def __init__(self, request):
         self.request = request
-        self.conn = None
-        self._is_bound = False
 
     def _ensure_conn(self, mode, force_dn_pass=False):
         """
@@ -128,7 +131,10 @@ class UserSession(object):
         force_dn_pass - TODO this is wack.. if True
         then we use dn_pass and ignore the session's assertion
         """
-        if not self.conn:
+        dn, password = self.dn_pass()
+        if not hasattr(self.request, CONNECTIONS_KEY):
+            self.request.larper_conns = [{}, {}]
+        if dn not in self.request.larper_conns[mode]:
             if mode == WRITE:
                 server_uri = settings.LDAP_SYNC_PROVIDER_URI
             else:
@@ -172,7 +178,18 @@ class UserSession(object):
         if they don't auth against the user in the session.
         """
         unique_id = self.request.user.unique_id
-        return (Person.dn(unique_id), get_password(self.request))
+        password = get_password(self.request)
+        if unique_id and password:
+            return (Person.dn(unique_id), password)
+        else:
+            # Should never happen
+            if unique_id == None:
+                raise Exception("No unique id on the request.user object")
+            elif password == None:
+                raise Exception("No password in the session")
+            else:
+                raise Exception("unique_id [%s] password length [%d]" %\
+                                    (unique_id, len(password)))
 
     def registered_user(self):
         """Checks if the current user is registered in the system.
@@ -198,9 +215,12 @@ class UserSession(object):
         larper.Person objects.
         """
         encoded_q = query.encode('utf-8')
-        esc_q = filter_format("(|(cn=*%s*)(mail=*%s*))",
-                              (encoded_q, encoded_q))
-        return _populate_any(self._search(esc_q))
+        peep_esc_q = filter_format(PEEP_SRCH_FLTR, (encoded_q, encoded_q))
+        irc_esc_q = filter_format(IRC_SRCH_FLTR, (encoded_q,))
+        people = self._people_search(peep_esc_q)
+        irc_nicks = self._irc_search(irc_esc_q)
+        people += self._people_from_irc_results_search(irc_nicks)
+        return self._populate_people_results(people)
 
     def search_by_name(self, query):
         """
@@ -208,7 +228,7 @@ class UserSession(object):
         same type of data as search.
         """
         q = filter_format("(cn=*%s*)", (query.encode('utf-8'),))
-        return _populate_any(self._search(q))
+        return self._populate_people_results(self._people_search(q))
 
     def search_by_email(self, query):
         """
@@ -218,16 +238,19 @@ class UserSession(object):
         encoded_q = query.encode('utf-8')
         q = filter_format("(|(mail=*%s*)(uid=*%s*))",
                           (encoded_q, encoded_q,))
-        return _populate_any(self._search(q))
+        return self._populate_people_results(self._people_search(q))
 
-    def get_by_unique_id(self, unique_id):
+    def get_by_unique_id(self, unique_id, use_master=False):
         """
         Retrieves a person from LDAP with this unique_id.
         Raises NO_SUCH_PERSON if unable to find them.
+
+        use_master can be set to True to force reading from master
+        where stale data isn't acceptable.
         """
         q = filter_format("(uniqueIdentifier=%s)", (unique_id,))
-        results = self._search(q)
-        msg = 'Unable to locale %s in the LDAP directory'
+        results = self._people_search(q, use_master)
+        msg = 'Unable to locate %s in the LDAP directory'
         if 0 == len(results):
             raise NO_SUCH_PERSON(msg % unique_id)
         elif 1 == len(results):
@@ -242,17 +265,17 @@ class UserSession(object):
             msg = 'Multiple people found for %s. This should never happen.'
             raise INCONCEIVABLE(msg % unique_id)
 
-    def profile_photo(self, unique_id):
+    def profile_photo(self, unique_id, use_master=False):
         """
         Retrieves a person's profile photo. Returns
         jpeg binary data.
         """
-        attrs = self._profile_photo_attrs(unique_id)
+        attrs = self._profile_photo_attrs(unique_id, use_master)
         if 'jpegPhoto' in attrs:
             return attrs['jpegPhoto'][0]
         return False
 
-    def profile_service_ids(self, person_unique_id):
+    def profile_service_ids(self, person_unique_id, use_master=False):
         """
         Returns a dict that contains remote system ids.
         Keys for dict include:
@@ -260,9 +283,15 @@ class UserSession(object):
         * MOZILLA_IRC_SERVICE_URI
 
         Values are a SystemId object for that service.
+
+        use_master can be set to True to force reading from master
+        where stale data isn't acceptable.
         """
         services = {}
-        conn = self._ensure_conn(READ)
+        if use_master:
+            conn = self._ensure_conn(WRITE)
+        else:
+            conn = self._ensure_conn(READ)
         search_filter = '(mozilliansServiceURI=*)'
         rs = conn.search_s(Person.dn(person_unique_id),
                            ldap.SCOPE_SUBTREE,
@@ -277,9 +306,12 @@ class UserSession(object):
             services[attrs['mozilliansServiceURI'][0]] = sysid
         return services
 
-    def _profile_photo_attrs(self, unique_id):
+    def _profile_photo_attrs(self, unique_id, use_master=False):
         """Returns dict that contains the jpegPhoto key or None."""
-        conn = self._ensure_conn(READ)
+        if use_master:
+            conn = self._ensure_conn(WRITE)
+        else:
+            conn = self._ensure_conn(READ)
         search_filter = filter_format("(uniqueIdentifier=%s)", (unique_id,))
         rs = conn.search_s(settings.LDAP_USERS_GROUP, ldap.SCOPE_SUBTREE,
                              search_filter, ['jpegPhoto'])
@@ -292,7 +324,9 @@ class UserSession(object):
     def update_person(self, unique_id, form):
         """
         Updates a person's LDAP directory record
-        based on phonebook.forms.ProfileForm
+        based on phonebook.forms.ProfileForm.
+
+        Method always uses master.
         """
         conn = self._ensure_conn(WRITE)
 
@@ -343,6 +377,8 @@ class UserSession(object):
         unique_id
         form - An instance of phonebook.forms.ProfileForm
         Safe to call if no photo has been uploaded by the user.
+
+        Method always uses master.
         """
         if 'photo' in form and form['photo']:
             photo = form['photo'].file.read()
@@ -369,6 +405,8 @@ class UserSession(object):
         vouchee - The unique_id of the Pending user who is being vouched for
 
         TODO: I think I'm doing something dumb with encode('utf-8')
+
+        Method always uses master.
         """
         conn = self._ensure_conn(WRITE)
         voucher_dn = Person.dn(voucher).encode('utf-8')
@@ -378,10 +416,84 @@ class UserSession(object):
         conn.modify_s(vouchee_dn, modlist)
         return True
 
-    def _search(self, search_filter):
-        conn = self._ensure_conn(READ)
+    def _people_search(self, search_filter, use_master=False):
+        """
+        use_master can be set to True to force reading from master
+        where stale data isn't acceptable.
+        """
+        if use_master:
+            conn = self._ensure_conn(WRITE)
+        else:
+            conn = self._ensure_conn(READ)
         return conn.search_s(settings.LDAP_USERS_GROUP, ldap.SCOPE_SUBTREE,
                              search_filter, Person.search_attrs)
+
+    def _irc_search(self, search_filter, use_master=False):
+        """
+        Searches for SystemIDs based on IRC nickname.
+
+        use_master can be set to True to force reading from master
+        where stale data isn't acceptable.
+        """
+        if use_master:
+            conn = self._ensure_conn(WRITE)
+        else:
+            conn = self._ensure_conn(READ)
+        return conn.search_s(settings.LDAP_USERS_GROUP, ldap.SCOPE_SUBTREE,
+                             search_filter, SystemId.search_attrs)
+
+    def _people_from_irc_results_search(self, irc_results, use_master=False):
+        """
+        Searches for SystemIDs based on IRC nickname.
+
+        use_master can be set to True to force reading from master
+        where stale data isn't acceptable.
+        """
+        if use_master:
+            conn = self._ensure_conn(WRITE)
+        else:
+            conn = self._ensure_conn(READ)
+        uniq_ids = []
+        for result in irc_results:
+            dn, attrs = result
+
+            parts = ldap.dn.explode_dn(dn)
+            # ['uniqueIdentifier=13173391.34', 'uniqueIdentifier=7f3a67u000',
+            #  'ou=people', 'dc=mozillians', 'dc=org']
+            if len(parts) > 1:
+                subparts = parts[1].split('=')
+            # ['uniqueIdentifier', '7f3a67u000001']
+            if len(subparts) == 2:
+                # 7f3a67u000001
+                uniq_ids.append(subparts[1])
+        if not uniq_ids:
+            return []
+
+        # "(uniqueIdentifier=7f3a67u00001)(uniqueIdentifier=7f3a67u00002)"
+        frags = ["(uniqueIdentifier=%s)" % x for x in uniq_ids]
+        dn_filter_frag = ''.join(frags)
+
+        base_filter = '(&(objectClass=mozilliansPerson)(|%s))'
+        search_filter = base_filter % dn_filter_frag
+        return conn.search_s(settings.LDAP_USERS_GROUP, ldap.SCOPE_SUBTREE,
+                             search_filter, Person.search_attrs)
+
+    def _populate_people_results(self, results):
+        """
+        Given LDAP search results, method sorts and ensures
+        unique set of results.
+        """
+        people = []
+        cache = {}
+        for result in results:
+            dn, attrs = result
+            p = Person.new_from_directory(attrs)
+            if not p or p.unique_id in cache:
+                continue
+            else:
+                cache[p.unique_id] = True
+                people.append(p)
+        return people
 
     def __str__(self):
         return "<larper.UserSession for %s>" % self.request.user.username
@@ -408,10 +520,12 @@ class UserSession(object):
         * RegistrarSession instances
         """
         if hasattr(request, CONNECTIONS_KEY):
-            for conns in request.larper_conns:
-                for dn in conns.keys():
-                    conns[dn].unbind()
-                    del conns[dn]
+            # Each mode (read/write)
+            conns = request.larper_conns
+            for i in range(len(conns)):
+                for dn in conns[i].keys():
+                    conns[i][dn].unbind()
+                    del request.larper_conns[i][dn]
 
 
 class Person(object):
@@ -490,6 +604,10 @@ class Person(object):
             p.voucher_unique_id = Person.unique_id(voucher)
 
         return p
+
+    def get_profile(self):
+        """Retrieve the Django UserProfile for this Person."""
+        return User.objects.get(email=self.username).get_profile()
 
     def ldap_attrs(self):
         """
@@ -593,6 +711,9 @@ class SystemId(object):
     URI - http://google.com. Youtube (a Google property) would have
     it's own URI, since it has seperate username.
     """
+    search_attrs = ['uniqueIdentifier', 'mozilliansServiceURI',
+                    'mozilliansServiceID']
+
     def __init__(self, person_unique_id, unique_id, service_uri, service_id):
         self.person_unique_id = person_unique_id
         self.unique_id = unique_id
@@ -675,6 +796,8 @@ class RegistrarSession(UserSession):
         Creates a new user account in the LDAP directory.
         form - An instance of phonebook.forms.RegistrationForm
         returns a string which is the unique_id of the new user.
+
+        Method always uses master.
         """
         conn = self._ensure_conn(WRITE, force_dn_pass=True)
         unique_id = os.urandom(UUID_SIZE).encode('hex')
@@ -716,6 +839,8 @@ class AdminSession(UserSession):
         Completely removes a user's data from the LDAP directory.
         Note: Does not un-vouch any Mozillians for whom this user
         has vouched.
+
+        Method always uses master.
         """
         conn = self._ensure_conn(WRITE, force_dn_pass=True)
         person_dn = Person.dn(unique_id)
@@ -742,14 +867,6 @@ class AdminSession(UserSession):
         level details will automagically work.
         """
         return AdminSession(request)
-
-
-def _populate_any(results):
-    people = []
-    for result in results:
-        dn, attrs = result
-        people.append(Person.new_from_directory(attrs))
-    return people
 
 
 def change_password(unique_id, oldpass, password):
@@ -779,7 +896,7 @@ def set_password(username, password):
     un-authenticated users from the reset-password email
     flow.
 
-    *If the user is authenticated*, then 
+    *If the user is authenticated*, then
     *use the change_password method above*.
     """
     conn = ldap.initialize(settings.LDAP_SYNC_PROVIDER_URI)
@@ -794,3 +911,16 @@ def set_password(username, password):
             log.info("Resetting %s password" % dn)
     finally:
         conn.unbind()
+
+def _return_all():
+    """Return all LDAP records, provided no LIMITs are set."""
+    conn = ldap.initialize(settings.LDAP_SYNC_PROVIDER_URI)
+    conn.bind_s(settings.LDAP_ADMIN_DN, settings.LDAP_ADMIN_PASSWORD)
+    encoded_q = '@'.encode('utf-8')
+
+    search_filter = filter_format("(|(mail=*%s*)(uid=*%s*))",
+                                  (encoded_q, encoded_q,))
+
+    rs = conn.search_s(settings.LDAP_USERS_GROUP, ldap.SCOPE_SUBTREE,
+                       search_filter)
+    return rs

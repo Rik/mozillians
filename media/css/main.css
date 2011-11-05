@@ -3,6 +3,7 @@
     position: absolute;
     top: 0;
 }
+
 html[dir='rtl'].js .js-hide, html[dir='rtl'] .hide {
     left: 0;
     right: -9999px;
@@ -45,18 +46,39 @@ dt, dd {
 }
 
 dt {
-    clear: right;
+    clear: both;
     float: left;
     font-weight: bold;
     margin-right: 2%;
-    width: 20%;
+    width: 30%;
 }
 
 dd {
-    width: 78%;
+    float: left;
+    width: 66%;
+}
+
+em.underline {
+    font-style: normal;
+    text-decoration: underline;
 }
 
 /** Common and utility classes */
+.ui-autocomplete {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.ui-autocomplete li {
+    background-image: none;
+}
+
+.ui-autocomplete-input:focus {
+    -moz-box-shadow: none !important;
+    -webkit-box-shadow: none !important;
+    box-shadow: none !important;
+}
+
 .blue-pastels {
     background: #bbdfec url(../img/blue-pastels-bottom.png) no-repeat bottom center;
     border: 5px solid #fff;
@@ -114,7 +136,7 @@ dd {
         font-size: 14px;
         font-style: italic;
         font-weight: 200;
-        padding: 0 0 2px 10px;
+        padding: 0 0 2px 2px;
     }
 
     .blue-pastels .error label {
@@ -147,7 +169,8 @@ dd {
         text-decoration: underline;
     }
 
-    .blue-pastels input, .blue-pastels select, .blue-pastels textarea {
+    .blue-pastels input, .blue-pastels select, .blue-pastels textarea,
+    .blue-pastels .ui-widget.tagit {
         border: 1px inset #d8d8d8;
         border-bottom: 0;
         clear: both;
@@ -166,6 +189,9 @@ dd {
     }
 
     .blue-pastels input[type=file] {
+        box-shadow: none !important;
+        -moz-box-shadow: none !important;
+        -webkit-box-shadow: none !important;
         height: 2em;
     }
 
@@ -303,6 +329,51 @@ background-image: -moz-linear-gradient(
     clear: both;
 }
 
+.errorlist, .errorlist li {
+    background: none;
+    color: red;
+    margin: 0;
+    padding: 0;
+}
+
+/* Django Message Framework */
+#messages li {
+    border: 2px solid;
+    font-weight: bold;
+    margin: 0 auto;
+    padding: 5px;
+    text-align: center;
+    text-shadow: none;
+    width: 90%;
+}
+
+#messages a {
+    color: #000;
+    text-shadow: none;
+}
+
+#messages a:hover, #messages a:focus {
+    background: #fff;
+}
+
+#messages .error {
+    background: #ffb3b3;
+    border-color: #8c3c3c;
+    color: #8c3c3c;
+}
+
+#messages .warning {
+    background: #ffe8b3;
+    border-color: #8c713c;
+    color: #593e09;
+}
+
+#messages .info, #messages .success {
+    background: #b9ffb3;
+    border-color: #428c3c;
+    color: #428c3c;
+}
+
 /** Home Page */
 #body-home #main-content {
     background: top center no-repeat;
@@ -385,10 +456,6 @@ background-image: -moz-linear-gradient(
 }
 
 /** Register Page (Step 1: Create a Profile) */
-#body-register form {
-    position: relative;
-}
-
 #body-register .blue-pastels input {
     clear: left;
 }
@@ -401,6 +468,7 @@ background-image: -moz-linear-gradient(
 }
 
 #body-edit-profile #optin-container label {
+    width: 44%;
     float: left;
     width: 275px;
 }
@@ -408,6 +476,7 @@ background-image: -moz-linear-gradient(
 #body-edit-profile #id_optin {
     clear: none;
     top: 3px;
+    float: right;
 }
 
 #body-register #submit {
@@ -459,6 +528,14 @@ background-image: -moz-linear-gradient(
     margin: -4px 0 0 4px;
 }
 
+/* Autocomplete group fun on the edit profile page */
+#body-edit-profile #groups-container .tagit {
+    -moz-border-radius: inherit;
+    -webkit-border-radius: inherit;
+    border-radius: inherit;
+    height: auto;
+}
+
 #body-edit-profile #manage-profile {
     float: left;
     margin: -35px 0 0 15px;
@@ -486,9 +563,48 @@ background-image: -moz-linear-gradient(
 }
 
 /** Profile Page */
+#body-profile.pending #main-content h1 {
+    float: left;
+    width: 230px;
+}
+
+#body-profile #pending-approval:before {
+    background: url(../img/pending-alert-bg.png) no-repeat center;
+    content: "";
+    display: block;
+    height: 32px;
+    left: 17px;
+    position: absolute;
+    top: 7px;
+    width: 8px;
+}
+
 #body-profile #pending-approval {
-    margin: 5px 0 15px;
-    text-align: center;
+    background: #fdde80;
+    background: -moz-linear-gradient(top, #fdde80 0%, #eaaf17 100%);
+    background: -webkit-gradient(linear, left top, left bottom, color-stop(0%, #fdde80), color-stop(100%, #eaaf17));
+    background: -webkit-linear-gradient(top, #fdde80 0%, #eaaf17 100%);
+    background: -o-linear-gradient(top, #fdde80 0%, #eaaf17 100%);
+    background: linear-gradient(top, #fdde80 0%, #eaaf17 100%);
+    border: 1px solid #d76517;
+    border-radius: 10px;
+    -moz-border-radius: 10px;
+    -webkit-border-radius: 10px;
+    color: #e3232f;
+    float: left;
+    font-family: Verdana, Helvetiva, Arial, "DejaVu Sans", sans-serif;
+    font-size: 12px;
+    line-height: 14px;
+    margin: -10px 0 10px 10px;
+    min-height: 40px;
+    padding: 5px 10px 5px 40px;
+    position: relative;
+    width: 380px;
+}
+
+#body-profile #vouch-form {
+    display: block;
+    margin: 10px 0 5px;
 }
 
 #body-profile #pending-approval p {
@@ -499,6 +615,7 @@ background-image: -moz-linear-gradient(
 
 #body-profile #profile-photo {
     border: 1px solid #226b87;
+    display: inline-block;
     float: left;
     margin: 0 25px 0 0;
     max-height: 175px;
@@ -507,15 +624,43 @@ background-image: -moz-linear-gradient(
 
 #body-profile #edit-profile {
     float: right;
+    margin-top: -30px;
+    position: relative;
+    top: 30px;
 }
 
-#profile-info .vouched {
+#body-profile #profile-info {
+    float: left;
+    width: 445px;
+}
+
+#body-profile #profile-info .vouched {
     background: url(../img/icon-person.png) center right no-repeat;
     padding-right: 22px;
 }
 
 #body-profile #bio {
     width: 73%;
+}
+
+/** HACK: Group hack to make groups look like jQuery UI everywhere ^_^ */
+#body-profile #groups, #body-group-index #groups {
+    background: none;
+    border: 0;
+    height: auto;
+    overflow: auto;
+}
+
+#body-profile #groups {
+    width: 75%;
+}
+
+#body-profile #groups li, #body-group-index #groups li {
+    padding-right: .5em;
+}
+
+#body-profile #groups a, #body-group-index #groups a {
+    display: block;
 }
 
 /** Invite Page */
@@ -546,25 +691,61 @@ background-image: -moz-linear-gradient(
     width: 300px;
 }
 
-#body-search .result .profile-photo {
+.search-page .result {
+    margin-bottom: 10px;
+}
+
+.search-page .result .avatar {
+    float: left;
+    width: 70px;
+    margin: 0 10px 0 35px;
+    height: 70px;
+}
+
+.search-page .result .details {
+    float: left;
+}
+
+.search-page .result .profile-photo {
     border: 1px solid #52adcc;
     border-radius: 4px;
     -moz-border-radius: 4px;
     -webkit-border-radius: 4px;
     float: left;
-    margin: 0 10px 0 35px;
     width: 70px;
+    max-height: 70px;
 }
 
-#body-search .result h2 {
+.search-page .result h2 {
     font-size: 19px;
     margin: 0;
     padding: 20px 0 0;
 }
 
-#body-search .result h3 {
+.search-page .result h3 {
     font-size: 16px;
     margin: 0;
+}
+
+.pagination {
+    margin: 20px 35px 10px 35px;
+    font-size: 16px;
+    font-family: MetaBold,'Trebuchet MS',sans-serif;
+}
+
+/** Confirm Profile Delete */
+#body-confirm-delete #are-you-sure {
+    font-size: 24px;
+    margin-top: 50px;
+    text-align: center;
+}
+
+#body-confirm-delete #actions {
+    text-align: center;
+}
+
+#body-confirm-delete #delete-action {
+    margin-left: 30px;
 }
 
 /** Error pages (404, 500, csrf, etc.) */

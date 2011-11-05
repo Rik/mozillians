@@ -1,114 +1,139 @@
 {% extends "base.html" %}
 
 {% block body_id %}profile{% endblock %}
-{% block body_classes %}box-content{% endblock %}
+{% block body_classes %}
+    box-content {% if not person.voucher %}pending{% endif %}
+{% endblock %}
 
 {% block main_content %}
   <h1>
     {% if user.username == person.username %}
       {{ _('Your Profile') }}
+    {% elif person.voucher %}
+      {{ _('Mozillian Profile') }}
     {% else %}
-      {{ person.full_name }}
+      {{ _('Pending Profile') }}
     {% endif %}
   </h1>
 
   {% if not person.voucher %}
     {% if user.username == person.username %}
       <p id="pending-approval">
-        {% trans %}
-          Your profile is waiting for approval. Send this link to someone who is
-          familiar with your contributions and ask them to vouch for you.
+        {% trans profile_url=absolutify(url('profile', user.unique_id)) %}
+          Your profile is waiting for approval. Send this link to someone who
+          is familiar with your contributions and ask them to vouch for you:
+          <br>
+          <em class="underline" title="Your profile URL">
+            {{ profile_url }}
+          </em>
         {% endtrans %}
-        </p>
-      {% else %}
-        <div id="pending-approval">
-          <p>
-            {% trans vouch='#' %}
-              This profile is waiting for approval. If you can vouch for this
-              person's contributions, please do so.
+      </p>
+    {% else %}
+      <div id="pending-approval">
+        {% trans vouch='#' %}
+          This profile is waiting for approval. If you can vouch for this
+          person's contributions, please do so.
+        {% endtrans %}
+
+        {% if vouch_form %}
+          <form action="{{ url('phonebook.vouch') }}" method="POST"
+            id="vouch-form">
+            {{ csrf() }}
+
+            {{ vouch_form }}
+
+            {% trans name=person.full_name %}
+              <button type="submit" class="button orange small">
+                Vouch for {{ name }}
+              </button>
             {% endtrans %}
-          </p>
-
-          {% if vouch_form %}
-            <form action="{{ url('phonebook.vouch') }}" method="POST"
-              id="vouch-form">
-              {{ csrf() }}
-
-              {{ vouch_form }}
-
-              {% trans name=person.full_name %}
-                <button type="submit" class="button orange small">
-                  Vouch for {{ name }}
-                </button>
-              {% endtrans %}
-            </form>
-          {% endif %}
-        </div>
-      {% endif %}
+          </form>
+        {% endif %}
+      </div>
+    {% endif %}
   {% endif %}
 
-  <div class="blue-pastels">
-    <img src="{{url('phonebook.profile_photo', person.unique_id) }}"
-      id="profile-photo" alt="{{ _('Profile photo') }}">
+  <div class="clear"></div>
+
+  <div class="blue-pastels vcard h-card">
+    {{ profile_photo(person) }}
 
     {% if user.username == person.username %}
-      <a href="{{ url('phonebook.edit_profile', person.unique_id) }}"
+      <a href="{{ url('phonebook.edit_profile') }}"
         class="button blue small" id="edit-profile">
         {{ _('Edit My Profile') }}
       </a>
     {% endif %}
 
-    <h2>
-      {% if person.voucher %}
-        {{ _('Mozillian Profile') }}
-      {% else %}
-        {{ _('Pending Profile') }}
-      {% endif %}
-    </h2>
+    <div id="profile-info">
+      <h2 class="fn p-name">
+        {{ person.full_name }}
+      </h2>
 
-    <dl id="profile-info">
-      {% if person.username %}
-        <dt>{{ _('Email') }}</dt>
-        <dd><a href="mailto:{{ person.username }}">
-          {{ person.username }}
-        </a></dd>
-      {% endif %}
+      <dl>
+        {% if person.username %}
+          <dt>{{ _('Email') }}</dt>
+          <dd><a class="email u-email" href="mailto:{{ person.username }}">
+            {{ person.username }}
+          </a></dd>
+        {% endif %}
 
-      {% if person.irc_nickname %}
-        <dt>{{_('IRC Nickname') }}</dt>
-        <dd><a class="url" rel="me" href="{{ person.irc_nickname.service_uri }}">
-          {{person.irc_nickname.service_id}}
-        </a></dd>
-      {% endif %}
+        {% if person.irc_nickname %}
+          <dt>{{_('IRC Nickname') }}</dt>
+          <dd><a class="nickname p-nickname" rel="me" href="{{ person.irc_nickname.service_uri }}">
+            {{person.irc_nickname.service_id}}
+          </a></dd>
+        {% endif %}
 
-      {% for uri, service in services.items() %}
-        <dt>{{ service.service_uri }}</dt>
-        <dd><a class="url" rel="me" href="{{ service.service_uri }}">
-          {{ service.service_id }}
-        </a></dd>
-      {% endfor %}
+        {% for uri, service in services.items() %}
+          <dt>{{ service.service_uri }}</dt>
+          <dd><a class="url u-url" rel="me" href="{{ service.service_uri }}">
+            {{ service.service_id }}
+          </a></dd>
+        {% endfor %}
 
-      {% if person.voucher %}
-        <dt>{{ _('Vouched by') }}</dt>
-        <dd>
-        <a href="{{ url('profile', person.voucher.unique_id) }}"
-          class="vouched">
-            {{ person.voucher.full_name }}
-          </a>
-        </dd>
-      {% elif user.username == person.username %}
-        <dt>{{ _('Pending...') }}</dt>
-        <dd><a href="{{ url('confirm_register') }}">
-          {{ _('Vouch for me') }}
-        </a></dd>
-      {% endif %}
-    </dl>
+        {% if person.voucher == "Unknown Voucher" %}
+          <!-- This user's voucher is no longer active. -->
+        {% elif person.voucher %}
+          <dt>{{ _('Vouched by') }}</dt>
+          <dd>
+          <a href="{{ url('profile', person.voucher.unique_id) }}"
+            class="vouched">
+              {{ person.voucher.full_name }}
+            </a>
+          </dd>
+        {% endif %}
+      </dl>
+    </div>
 
     <div class="clear"></div>
 
     {% if person.biography %}
       <h3>{{ _('Bio:') }}{# L10n: Biography #}</h3>
-      <p id="bio" class="note">{{ person.biography }}</p>
+      <div id="bio" class="note p-note">
+        {{ person.biography|paragraphize }}
+      </div>
     {% endif %}
+
+    {% if groups %}
+      <h3>{{ _('Groups') }}</h3>
+
+      <ul id="groups" class="tagit ui-widget ui-widget-content ui-corner-all">
+        {% for group in groups %}
+          <li class="tagit-choice ui-widget-content ui-state-default
+                     ui-corner-all">
+            {% if request.user|vouched %}
+              <a href="{{ url('group', group.id, group.url) }}">
+                {{ group.name }}
+              </a>
+            {% else %}
+              {{ group.name }}
+            {% endif %}
+          </li>
+        {% endfor %}
+      </ul>
+    {% endif %}
+
+    <div class="clear"></div>
 </div>
 {% endblock %}
