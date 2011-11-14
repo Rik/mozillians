@@ -21,9 +21,15 @@
       {% trans register=url('register') %}
         Join the directory to share information about yourself and to learn
         more about other Mozillians.
-
-        <br><a class="browserid-register button orange" href="{{ register }}" class="button orange">Create Profile</a>
       {% endtrans %}
+  </p>
+  <p>
+      <button id="create_profile" class="browserid-register">
+        <span class="id">
+          <span class="bid">{{ _('ID') }}</span><span class="arrow"></span>
+        </span>
+        <span class="signin">{{ _('Sign In with BrowserID') }}</span>
+      </button>
     {% elif user.is_vouched() %}
       {% trans invite=url('invite') %}
         Tell other contributors about this directory and ask them to create a

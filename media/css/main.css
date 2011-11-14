@@ -752,3 +752,64 @@ background-image: -moz-linear-gradient(
 .error-page #tumblebeast {
     float: right;
 }
+
+button#create_profile {
+    background: -moz-linear-gradient(center top , #B1DAFA, #3AA8FF) repeat scroll 0 0 transparent;
+    border: 1px solid #3697E5;
+    border-radius: 1px 1px 1px 1px;
+    white-space: nowrap;
+}
+button#create_profile:hover {
+    background: -moz-linear-gradient(center top , #B1DAFA, #59B4FE) repeat scroll 0 0 transparent;
+    border: 1px solid #3697E5;
+}
+button#create_profile:active {
+    background: -moz-linear-gradient(center top , #8DCAFC, #3AA8FF) repeat scroll 0 0 transparent;
+    border: 1px solid #3697E5;
+}
+.id, .signin {
+    font-size: 12px;
+    font-weight: bold;
+    line-height: 21px;
+    padding: 1px 10px;
+}
+.id {
+    border-right: 1px solid #4DAFFE;
+    box-shadow: 1px 0 0 #ACDAFF;
+    display: inline-block;
+    padding-bottom: 2px;
+    padding-left: 5px;
+    padding-right: 5px;
+}
+.signin {
+    color: #FFFFFF;
+    text-shadow: 0 -0.7px 0 #3497E4, 0 1px 1px #3497E4;
+}
+.bid, .arrow {
+    font-size: 13px;
+    line-height: 9px;
+}
+.bid {
+    background-color: white;
+    color: #7DC4FC;
+    display: inline-block;
+    font-weight: bold;
+    padding: 2px 0 2px 2px;
+    text-shadow: 0 -0.5px 0 #499DF3;
+}
+.bid-webkit {
+    line-height: 11px;
+}
+.arrow {
+    border-color: transparent transparent transparent white;
+    border-style: outset;
+    border-width: 6px 0 7px 4px;
+    display: inline-block;
+    height: 0;
+    margin-bottom: 3px;
+    vertical-align: middle;
+    width: 0;
+}
+.arrow-webkit {
+    margin-bottom: 4px;
+}
