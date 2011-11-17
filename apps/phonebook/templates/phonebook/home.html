@@ -30,6 +30,8 @@
         </span>
         <span class="signin">{{ _('Sign In with BrowserID') }}</span>
       </button>
+      <br>
+      <a href="#">{{ _('What is BrowserID&quest; Why are we using it&quest;') }}</a>
     {% elif user.is_vouched() %}
       {% trans invite=url('invite') %}
         Tell other contributors about this directory and ask them to create a

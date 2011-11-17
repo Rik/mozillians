@@ -16,7 +16,6 @@ log.info("Setting up handle_login")
 
 def handle_login(sender, **kwargs):
     request = kwargs['request']
-    larper.store_password(request, request.POST.get('password', ''))
     if 'unique_id' in request.session:
         log.info("Setting unique_id=%s from session on user" % request.session['unique_id'])
         request.user.unique_id = request.session['unique_id']
@@ -35,11 +34,10 @@ class LarperMiddleware(object):
     with the following attributes:
     * unique_id
 
-    This complements the dn and password management from larper.dn and
+    This complements the assertion management from larper.get_assertion
     larper.password
     """
     def process_request(self, request):
-        log.info("PROCESS REQUEST")
         if not hasattr(request, 'user'):
             msg = ('django.contrib.auth.middleware.AuthenticationMiddleware '
                    'is missing from your settings.py')

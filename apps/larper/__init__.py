@@ -30,6 +30,7 @@ AdminSession
 With an admin session, one can delete users from the system.
 
 """
+import hashlib
 import os
 import re
 from time import time
@@ -44,33 +45,23 @@ from django.core import signing
 from django.contrib.auth.models import User
 
 import commonware.log
+from funfactory.utils import absolutify
 
 import browserid
 
 log = commonware.log.getLogger('m.larper')
 
-def get_password(request):
-    """Not sure if this and store_password belong here..."""
-    d = request.session.get('PASSWORD')
-    if d:
-        return signing.loads(d).get('password')
-
-
-def store_password(request, password):
-    """
-    request - Django web request
-    password - A clear text password
-    """
-    request.session['PASSWORD'] = signing.dumps(dict(password=password))
-
+ASSERTION_SIGNED_KEY = 'ASSERTION'
+ASSERTION_KEY = 'assertion'
 
 def get_assertion(request):
     """ Not sure if this and store_assertion belong here..."""
-    d = request.session.get('ASSERTION')
+    d = request.session.get(ASSERTION_SIGNED_KEY)
     if d:
-        return signing.loads(d).get('assertion')
+        assertion = signing.loads(d).get(ASSERTION_KEY)
+        return (hashlib.md5(assertion).hexdigest(), assertion)
     else:
-        return None
+        return (None, None)
 
 
 def store_assertion(request, assertion):
@@ -78,7 +69,9 @@ def store_assertion(request, assertion):
     request - Django web request
     password - A clear text password
     """
-    request.session['ASSERTION'] = signing.dumps(dict(assertion=assertion))
+    request.session[ASSERTION_SIGNED_KEY] = signing.dumps({
+            ASSERTION_KEY: assertion,
+            })
 
 
 class NO_SUCH_PERSON(Exception):
@@ -122,15 +115,54 @@ class UserSession(object):
     """
     def __init__(self, request):
         self.request = request
+        self._is_bound = False
 
-    def _ensure_conn(self, mode, force_dn_pass=False):
+    def _ensure_conn(self, mode):
         """
         mode - One of READ or WRITE. Pass WRITE
         if any of the LDAP operations will include
         adding, modifying, or deleting entires.
-        force_dn_pass - TODO this is wack.. if True
-        then we use dn_pass and ignore the session's assertion
+
+        UserSession connections will be established with
+        an assertion stored in the user's session. 
+
+        Raises exceptions if this class is used with a 
+        non-authenticated user (Anonymous).
         """
+        return self._ensure_conn_sasl(mode)
+
+    def _ensure_conn_sasl(self, mode):
+        """Using the assertion from the user's session, 
+        connects to LDAP via sasl_interactive_bind and
+        the BROWSER-ID auth mechanism."""
+        assrtn_hsh, assertion = get_assertion(self.request)
+        if not assertion:
+            raise Exception("Programming error, do not use UserSession without an assertion")
+        if not hasattr(self.request, CONNECTIONS_KEY):
+            self.request.larper_conns = [{}, {}]
+        fresh_bind = False        
+        if assrtn_hsh not in self.request.larper_conns[mode]:
+            if mode == WRITE:
+                server_uri = settings.LDAP_SYNC_PROVIDER_URI
+            else:
+                server_uri = settings.LDAP_SYNC_CONSUMER_URI
+            self.conn = ldap.initialize(server_uri)
+            self.request.larper_conns[mode][assrtn_hsh] = self.conn
+            self._sasl_bind(assertion)
+            fresh_bind = True
+        else:
+            self.conn = self.request.larper_conns[mode][assrtn_hsh]
+
+        # During registration during a single request we can go from
+        # an invalid dn, to a valid one. We'll need to re-bind to LDAP
+        if not fresh_bind and not self._dn(assertion):
+            self._sasl_bind(assertion)
+        return self.conn
+
+    def _ensure_conn_simple(self, mode):
+        """Using the dn and password from the apps config
+        connects to LDAP via simple bind. Useful for 
+        non-human agents."""
         dn, password = self.dn_pass()
         if not hasattr(self.request, CONNECTIONS_KEY):
             self.request.larper_conns = [{}, {}]
@@ -140,35 +172,28 @@ class UserSession(object):
             else:
                 server_uri = settings.LDAP_SYNC_CONSUMER_URI
             self.conn = ldap.initialize(server_uri)
+            self.request.larper_conns[mode][dn] = self.conn
+            self.conn.bind_s(dn, password)
+        return self.request.larper_conns[mode][dn]
 
-        if not self._is_bound:
-            assertion = get_assertion(self.request)
-            if assertion and force_dn_pass == False:
+    def _sasl_bind(self, assertion):
+        audience = absolutify('')
+        sasl_creds = browserid.credentials(assertion, audience)
+        self.conn.sasl_interactive_bind_s("", sasl_creds)
 
-                dn = None
-                # TODO protocol host port...
-                audience = self.request.get_host()
-                sasl_creds = browserid.credentials(assertion, audience)
-                log.debug("Going to bind with an assertion=%s and \naudience=%s" % (assertion, audience))
-
-                print repr(self.conn.sasl_interactive_bind_s("", sasl_creds))
-                log.debug("Okay, and now are we a new user?")
-                new_dn = self.conn.whoami_s()
-                log.debug("New DN=%s" % new_dn)
-                m = KNOWN_USER.match(new_dn)
-                if m:
-                    dn = Person.dn(m.group(1)) # this could be an invalid dn if the user isn't registered
-                    log.debug("Known user, Setting DN to [%s]" % dn)
-            else:
-                dn, password = self.dn_pass()
-                self.conn.bind_s(dn, password)
-            self._is_bound = True
-            if not hasattr(self.request, CONNECTIONS_KEY):
-                self.request.larper_conns = [{}, {}]
-            if dn and dn not in self.request.larper_conns[0]:
-                # TODO is this a memory leak, or do we ever get ride of these dn entries?
-                self.request.larper_conns[mode][dn] = self.conn
-        return self.conn
+    def _dn(self, assertion):
+        dn = None
+        new_dn = self.conn.whoami_s()
+        # this could be an invalid dn if the user isn't registered
+        # it would look like uid=shout@ozten.com,cn=browser-id,cn=auth
+        m = KNOWN_USER.match(new_dn)
+        # TODO instrament this
+        if m:
+            dn = Person.dn(m.group(1))
+            log.info("New DN=%s" % dn)
+        else:
+            log.info("Unknown email address %s" % new_dn)
+        return dn
 
     def dn_pass(self):
         """
@@ -177,19 +202,12 @@ class UserSession(object):
         Subclasses of UserSession should override this method
         if they don't auth against the user in the session.
         """
-        unique_id = self.request.user.unique_id
-        password = get_password(self.request)
-        if unique_id and password:
-            return (Person.dn(unique_id), password)
-        else:
-            # Should never happen
-            if unique_id == None:
-                raise Exception("No unique id on the request.user object")
-            elif password == None:
-                raise Exception("No password in the session")
-            else:
-                raise Exception("unique_id [%s] password length [%d]" %\
-                                    (unique_id, len(password)))
+        raise Exception("UserSession should be used with an assertion, not dn/password")
+
+
+    def whoami(self):
+        conn = self._ensure_conn(READ)
+        return self.conn.whoami_s()
 
     def registered_user(self):
         """Checks if the current user is registered in the system.
@@ -248,9 +266,10 @@ class UserSession(object):
         use_master can be set to True to force reading from master
         where stale data isn't acceptable.
         """
-        q = filter_format("(uniqueIdentifier=%s)", (unique_id,))
-        results = self._people_search(q, use_master)
+        q = filter_format("(&(objectClass=mozilliansPerson)(uniqueIdentifier=%s))", (unique_id,))
         msg = 'Unable to locate %s in the LDAP directory'
+        results = self._people_search(q, use_master)
+
         if 0 == len(results):
             raise NO_SUCH_PERSON(msg % unique_id)
         elif 1 == len(results):
@@ -413,6 +432,7 @@ class UserSession(object):
         vouchee_dn = Person.dn(vouchee)
 
         modlist = [(ldap.MOD_ADD, 'mozilliansVouchedBy', [voucher_dn])]
+
         conn.modify_s(vouchee_dn, modlist)
         return True
 
@@ -425,7 +445,7 @@ class UserSession(object):
             conn = self._ensure_conn(WRITE)
         else:
             conn = self._ensure_conn(READ)
-        return conn.search_s(settings.LDAP_USERS_GROUP, ldap.SCOPE_SUBTREE,
+        return conn.search_s(settings.LDAP_USERS_GROUP, ldap.SCOPE_ONELEVEL,
                              search_filter, Person.search_attrs)
 
     def _irc_search(self, search_filter, use_master=False):
@@ -494,6 +514,10 @@ class UserSession(object):
                 cache[p.unique_id] = True
                 people.append(p)
         return people
+
+    def reset_connection(self, request):
+        UserSession.disconnect(request)
+        self._is_bound = False
 
     def __str__(self):
         return "<larper.UserSession for %s>" % self.request.user.username
@@ -787,6 +811,11 @@ class RegistrarSession(UserSession):
     def __init__(self, request):
         UserSession.__init__(self, request)
 
+    def _ensure_conn(self, mode):
+        """Overrides UserSession._ensure_conn"""
+        return self._ensure_conn_simple(mode)
+
+
     def dn_pass(self):
         """Returns registrar dn and password."""
         return (settings.LDAP_REGISTRAR_DN, settings.LDAP_REGISTRAR_PASSWORD)
@@ -799,7 +828,7 @@ class RegistrarSession(UserSession):
 
         Method always uses master.
         """
-        conn = self._ensure_conn(WRITE, force_dn_pass=True)
+        conn = self._ensure_conn(WRITE)
         unique_id = os.urandom(UUID_SIZE).encode('hex')
         form['unique_id'] = unique_id
         new_dn = Person.dn(unique_id)
@@ -830,6 +859,10 @@ class AdminSession(UserSession):
     def __init__(self, request):
         UserSession.__init__(self, request)
 
+    def _ensure_conn(self, mode):
+        """Overrides UserSession._ensure_conn"""
+        return self._ensure_conn_simple(mode)
+
     def dn_pass(self):
         """Returns administrator dn and password."""
         return (settings.LDAP_ADMIN_DN, settings.LDAP_ADMIN_PASSWORD)
@@ -842,7 +875,7 @@ class AdminSession(UserSession):
 
         Method always uses master.
         """
-        conn = self._ensure_conn(WRITE, force_dn_pass=True)
+        conn = self._ensure_conn(WRITE)
         person_dn = Person.dn(unique_id)
 
         # Kill SystemId or other children

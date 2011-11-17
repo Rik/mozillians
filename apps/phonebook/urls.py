@@ -8,6 +8,7 @@ admin.autodiscover()
 from phonebook import views
 
 urlpatterns = patterns('',
+    url('^$', views.home, name='home'),
     url('^u/(?P<unique_id>.*)$', views.profile_uid, name='profile'),
     url('^user/photo/(?P<unique_id>.*)$', views.photo,
         name='phonebook.profile_photo'),
@@ -33,8 +34,6 @@ urlpatterns = patterns('',
     url('^confirm-register$', direct_to_template,
         {'template': 'phonebook/confirm_register.html'},
         name='confirm_register'),
-    url('^$', direct_to_template, {'template': 'phonebook/home.html'},
-        name='home'),
 )
 
 ## In DEBUG mode, serve media files through Django.

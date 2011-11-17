@@ -17,12 +17,10 @@ from larper import store_assertion, UserSession
 
 log = commonware.log.getLogger('m.browserid')
 
-# I think I need to write a backend auth package.
-# Consider renaming this app to sasl-browserid
-# Follow django-browserid's user creation 
-
-# login should redirect to register and say "shout@ozten.com" is 
-# an unknown account, would you like to create one?
+# TODO: 
+# * remove login
+# * I think I need to write a backend auth package.
+# * Consider renaming this app to django-sasl-browserid
 
 @require_POST
 def browserid_login(request):
@@ -39,13 +37,10 @@ def browserid_login(request):
     scenes, we don't use it's auth code nor it's views."""
     form = ModalBrowserIdForm(data=request.POST)
     if form.is_valid():
-        log.debug("form looks good, doing authentication")
         assertion = form.cleaned_data['assertion']
+        store_assertion(request, assertion)
         mode = form.cleaned_data['mode']
-        log.debug("mode=%s assertion=%s" % (mode, assertion))
-        #auth.logout(request)
         user = auth.authenticate(request=request, assertion=assertion)
-        # DO we need a retry page?
         if user:
             auth.login(request, user)
             return redirect('profile', request.user.unique_id)
@@ -53,14 +48,6 @@ def browserid_login(request):
             url = absolutify("%s?link=%s" % (reverse('register'), mode))
             return redirect(url)
     else:
-        # raise 500?
-        log.debug("Form didn't validate %s" % str(request.POST))
-
-
-def browserid_register(request):
-    """TODO registration w/o passwords"""
-    if request.session['verified_email']:
-        asdf
-    else:
-        log.error("Browserid registration, but no verified email in session")
+        log.warning("Form didn't validate %s" % str(request.POST))
         return redirect('home')
+        

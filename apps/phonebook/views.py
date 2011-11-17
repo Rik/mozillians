@@ -16,6 +16,7 @@ from django.views.decorators.http import require_POST
 
 import commonware.log
 from funfactory.urlresolvers import reverse
+from session_csrf import anonymous_csrf
 from tower import ugettext as _
 
 from groups.models import Group
@@ -31,6 +32,8 @@ log = commonware.log.getLogger('m.phonebook')
 
 BAD_VOUCHER = 'Unknown Voucher'
 
+
+
 def vouch_required(f):
     """If a user is not vouched they get a 403."""
     @login_required
@@ -44,15 +47,16 @@ def vouch_required(f):
 
     return wrapped
 
+@anonymous_csrf
+def home(request):
+    return render(request, 'phonebook/home.html')
 
 @never_cache
 @login_required
 def profile_uid(request, unique_id):
     """View a profile by unique_id, which is a stable, random user id."""
     needs_master = (request.user.unique_id == unique_id)
-
     ldap = UserSession.connect(request)
-    log.warning('profile_uid [%s]' % unique_id)
     try:
         # Stale data okay when viewing others
         person = ldap.get_by_unique_id(unique_id, needs_master)
@@ -61,6 +65,7 @@ def profile_uid(request, unique_id):
     except NO_SUCH_PERSON:
         log.warning('profile_uid Sending 404 for [%s]' % unique_id)
         raise Http404
+    return "huh"
 
 
 def profile_nickname(request, nickname):
@@ -79,7 +84,8 @@ def _profile(request, person, use_master):
     vouch_form = None
     ldap = UserSession.connect(request)
 
-    if person.voucher_unique_id or cache.get('vouched_' + person.unique_id):
+    #if person.voucher_unique_id or cache.get('vouched_' + person.unique_id):
+    if person.voucher_unique_id:
         try:
             # Stale data okay
             person.voucher = ldap.get_by_unique_id(person.voucher_unique_id)
@@ -92,6 +98,7 @@ def _profile(request, person, use_master):
                 vouchee=person.unique_id))
 
     services = ldap.profile_service_ids(person.unique_id, use_master)
+
     person.irc_nickname = None
     if MOZILLA_IRC_SERVICE_URI in services:
         person.irc_nickname = services[MOZILLA_IRC_SERVICE_URI]
@@ -160,6 +167,7 @@ def _edit_profile(request, new_account):
         form = forms.ProfileForm(initial=initial)
 
     d = dict(form=form,
+             edit_form_action=reverse('phonebook.edit_profile'),
              delete_form=del_form,
              person=person,
              registration_flow=new_account,

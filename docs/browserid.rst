@@ -70,7 +70,6 @@ Example: `slapd` has `dn:uid=shout@ozten.com,cn=browser-id,cn=auth` as the user'
 
 BrowserID Session
 '''''''''''''''''''
-
 We authenticate the user via BrowserID which gives us an email address.
 This will either be a valid email address in the system or will be
 an unknown email address. We maintain a 6 hour session during which
@@ -135,7 +134,7 @@ Considering our original flow, if at step 16 the DN *did* contain `,cn=browser-i
 
 3. The user is logged in. The user's assertion is set into the Django session.
 
-4. *TBD* - The email address is noted in the session as a new user. The user is sent to the registration path to complete their creation of a LDAP user account.
+4. The email address is noted in the session as a new user. The user is sent to the registration path to complete their creation of a LDAP user account.
 
 Libraries
 '''''''''
@@ -145,37 +144,83 @@ bits don't match our requirements.
 We use the `SASL BROWSER-ID`_ authentication mechanism via a plugin running
 under OpenLDAP.
 
+The remaining glue is provided by apps/django-sasl-browserid
+
 .. _`django-browserid`: https://github.com/mozilla/django-browserid
 .. _`SASL BROWSER-ID`: https://github.com/ozten/sasl-browserid
 
-STATUS
-------
-
-The BrowserID integration is functional enough for a demo and the hard bits
-are complete for a production ready system... with the following caveauts:
-
-Session State
-'''''''''''''
-We have to store the user's browserid assertion in a per-user
-store. For the demo, we're using the secure session which is 
-cookie based. After some of thought, this is probably the best
-place, even though it increases the size of the cookie...
-
-The assertion is effectively a password, since it is used by 
-SASL BROWSER-ID if it is found in a session cache.
-
-To secure this backend session, Django shouldn't know about the MySQL
-which hosts the table browserid_session.
 
 UX and Flow
-'''''''''''
-Login and Legacy login work. The overall UX needs some work.
+-----------
+Login or Registration flows now begin on the homepage. There is no
+/login url. @login_required decorators have been upgraded to redirect
+the user to /.
 
-Registration - there is a hook to store the email address of an authenticated
-but unknown user in the session, so that a registration flow could use it.
-It is not hooked up.
+At the homepage, the user clicks either 'Log In' or 'Join Us'. Both 
+launch the BrowserID flow which gets a verified email. Which link 
+is noted, to help message the user in corner cases.
 
-It's not clear what the best registration flow is. Do we support legacy
-registration as well as BrowserID based registration?
+Once we have an assertion, we store it in the session and then we attempt 
+to authenticate the user via a BrowserID enabled LDAP backend. 
 
-Change Password - Should this appear on edit profile? When?
+Unknown Email
+'''''''''''''
+If the user isn't known, then they are redirected to /register. 
+There they will enter profile information and create their account.
+If the user originally clicked 'Log In', a warning will be shown with
+the chance to choose another email address.
+
+Existing Email
+''''''''''''''
+The user is logged in.
+
+Django Session
+'''''''''
+Assertions must be retained during a session, since they are used to connect to LDAP.
+In 1.0 we used signed_cookies as the Django session backend. This allowed us to 
+store the clear text password. We could replace password with assertion, except that
+assertions can be up to 4,000 characters long. We will switch the backend to Django's
+standard database backed sessions. Benefits, a small session ID can be used to "lookup" the 
+full assertion. The assertions will be signed to make it harder to get all assertions from the database..
+
+SESSION_ENGINE = "django.contrib.sessions.backends.db"
+After a couple days (effectively next release) do
+SESSION_ENGINE = "django.contrib.sessions.backends.cached_db"
+
+Reason - signed_cookies has been storing a big blob under 'sessionid'. Session engine tries to decode that into key value pairs and hits a
+MemcachedKeyLengthError at /
+Key length is > 250
+
+By moving to db before cached_db we avoid this technical issues.
+
+Alternative - Have IT delete all session data - we can't they are in cookies.
+
+
+Passwords
+'''''''''
+All logic and templates to support a password based authenticatio have
+been removed. New user accounts are marked as having unusable passwords.
+
+Debugging
+'''''''''
+
+Once slapd has successfully authenticated an assertion/audience pair, then 
+it is in the browserid_session cache. This is quite useful for debugging.
+
+I usually set an environment variable A to an assertion value.
+
+    A=eyJjZXJ0aWZpY2F0ZXMiOls...some_long_string...S0R1a1Z1QlBkUkpHZkF6VUJ3In0
+
+Then you can issue commands to debug the system as that user:
+
+    ldapwhoami -Y BROWSER-ID -H ldap://:1389/  -X $A -U 'http://localhost:8001'
+
+    ldapsearch -Y BROWSER-ID -H ldap://:1389/ -b 'dc=mozillians,dc=org' "(&(objectClass=mozilliansPerson)(mail=*ozten*))" -X $A -U 'http://localhost:8001'
+
+Problem:
+using ldapwhoami I always get
+dn:uid=foo@example.com,cn=browser-id,cn=auth
+I've checked and uid=foo@example.com exists, what gives?
+
+Solution:
+Are you missing authz-regexp config in slapd.conf or is it incorrect?
