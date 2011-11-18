@@ -224,3 +224,19 @@ I've checked and uid=foo@example.com exists, what gives?
 
 Solution:
 Are you missing authz-regexp config in slapd.conf or is it incorrect?
+
+Unit Tests
+''''''''''
+
+The Vagrant VM is setup to allow for development and unit tests.
+
+LDAP has it's own MySQL database with the following data pre-populated:
+
+INSERT INTO browserid_session(digest, email) VALUES (MD5('abcdefghijklmnop'), 'u000001@mozillians.org');
+INSERT INTO browserid_session(digest, email) VALUES (MD5('qrstuvwxyz'), 'u000003@mozillians.org');
+INSERT INTO browserid_session(digest, email) VALUES (MD5('newabcdefghi'), 'new@test.net');
+INSERT INTO browserid_session(digest, email) VALUES (MD5('somelongstring'), 'u000098@mozillians.org');
+INSERT INTO browserid_session(digest, email) VALUES (MD5('mrfusionsomereallylongstring'), 'mr.fusion@gmail.com');
+INSERT INTO browserid_session(digest, email) VALUES (MD5('mr2reallylongstring'), 'mr2@gmail.com');
+
+

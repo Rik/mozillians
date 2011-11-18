@@ -143,14 +143,18 @@ def _save_new_user(request, form):
 
     registrar = RegistrarSession.connect(request)
 
+    code = None
+    if 'invite-code' in request.session:
+        code = request.session['invite-code']
+
     d = form.cleaned_data
     d['email'] = email
     uniq_id = registrar.create_person(d)
     voucher = None
 
-    if d['code']:
+    if code:
         try:
-            invite = get_invite(d['code'])
+            invite = get_invite(code)
             voucher = invite.inviter
         except Invite.DoesNotExist:
             msg = 'Bad code in form [%s], skipping pre-vouch' % d['code']

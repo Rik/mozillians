@@ -9,8 +9,6 @@ from larper import store_assertion, UserSession
 from larper import get_assertion
 log = commonware.log.getLogger('m.browserid')
 
-log.debug("Loading browserid.backend")
-
 class SaslBrowserIDBackend(object):
     """Authenticates the user's BrowserID assertion and our audience
     with the LDAP server via the SASL BROWSER-ID authentication
@@ -22,7 +20,6 @@ class SaslBrowserIDBackend(object):
     def authenticate(self, request=None, assertion=None):
         if request == None or assertion == None:
             return None
-
         store_assertion(request, assertion)
         
         directory = UserSession(request)

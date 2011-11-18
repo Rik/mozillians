@@ -1,16 +1,20 @@
 from uuid import uuid4
 
-from django import test
 from django.contrib.auth.models import User
+from django import test
 
-import test_utils
-from nose.tools import eq_
 from pyquery import PyQuery as pq
 
 from funfactory.urlresolvers import set_url_prefix, reverse
-from phonebook.tests import (LDAPTestCase, AMANDA_NAME, AMANDEEP_NAME,
-                             AMANDEEP_VOUCHER, MOZILLIAN, PENDING,
-                             OTHER_MOZILLIAN, PASSWORD, mozillian_client)
+from funfactory.manage import path
+import test_utils
+
+from nose.tools import eq_
+
+from phonebook.tests.init2 import LDAPTestCase, AMANDA_NAME, AMANDEEP_NAME,\
+    AMANDEEP_VOUCHER, MOZILLIAN, PENDING,\
+    OTHER_MOZILLIAN, mozillian_client, MOZ_ASSER, PND_ASSER, call
+
 from phonebook.views import UNAUTHORIZED_DELETE
 
 
@@ -32,12 +36,14 @@ class TestDeleteUser(LDAPTestCase):
         we can test both non-vouched and vouched user's ability to delete
         their own profile.
         """
-        for user in [MOZILLIAN, PENDING]:
-            self._delete_flow(user)
+        for user, assertion in [(MOZILLIAN, MOZ_ASSER), 
+                     (PENDING, PND_ASSER)]:
+            self._delete_flow(user, assertion)
+        call(path('directory/devslapd/bin/x-rebuild'))
 
-    def _delete_flow(self, user):
+    def _delete_flow(self, user, assertion):
         """Private method used to walk through account deletion flow."""
-        client = mozillian_client(user['email'])
+        client = mozillian_client(user['email'], assertion)
         uniq_id = user['uniq_id']
 
         r = client.get(reverse('phonebook.edit_profile'))
@@ -65,15 +71,15 @@ class TestDeleteUser(LDAPTestCase):
         eq_(200, r.status_code)
         self.assertFalse(_logged_in_html(r))
 
-        # Make sure the user can't login anymore
         client = test.Client()
-        data = dict(username=user['email'], password=PASSWORD)
-        r = client.post(reverse('login'), data, follow=True)
+        client.get(reverse('home'))
+        data = dict(assertion=assertion, mode='register')
+        r = client.post(reverse('browserid_login'), data, follow=True)
+
         self.assertFalse(_logged_in_html(r))
 
-
+################ class TestViews(init2.LDAPTestCase) ######################
 class TestViews(LDAPTestCase):
-
     def test_anonymous_home(self):
         r = self.client.get('/', follow=True)
         self.assertEquals(200, r.status_code)
@@ -288,36 +294,32 @@ class TestOpensearchViews(test_utils.TestCase):
         assert '/fr/search' in response.content
 
 
+
 def _logged_in_html(response):
     doc = pq(response.content)
     return doc('a#logout') and doc('a#profile')
 
 
 def _create_new_user():
+    print('=============================================================================================================')
+    print('create new user in the house!')
     newbie_client = test.Client()
-    newbie_email = '%s@test.net' % str(uuid4())[0:8]
+    newbie_email = 'new@test.net'
+    assertion='newabcdefghi'
+    data = dict(assertion=assertion, mode='register')
+    r = newbie_client.post(reverse('browserid_login'), data, follow=True)
+
     reg_url = reverse('register')
     params = dict(email=newbie_email,
-                  password='asdfasdf',
-                  confirmp='asdfasdf',
                   first_name='Newbie',
                   last_name='McPal',
                   optin='True')
     r = newbie_client.post(reg_url, params, follow=True)
-    eq_('registration/login.html', r.templates[0].name)
+    eq_('phonebook/profile.html', r.templates[0].name)
 
     u = User.objects.filter(email=params['email'])[0].get_profile()
     u.is_confirmed = True
     u.save()
-
-    r = newbie_client.post(reverse('login'),
-                           dict(username=params['email'],
-                                password=params['password']),
-                           follow=True)
-
-    r = newbie_client.get(reverse('profile',
-                                  args=[r.context['user'].unique_id]))
-    eq_('phonebook/profile.html', r.templates[0].name)
 
     newbie_uniq_id = r.context['person'].unique_id
     if not newbie_uniq_id:
