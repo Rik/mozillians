@@ -83,7 +83,7 @@ class TestViews(LDAPTestCase):
         self.assertEquals(200, r.status_code)
         doc = pq(r.content)
 
-        eq_(doc('a#login').attr('href'), '#', 'We see a link to login')
+        self.assertTrue(doc('#browserid-login'), 'We see a link to login')
         self.assertFalse(_logged_in_html(r))
 
     def test_pending_home(self):
