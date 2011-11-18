@@ -60,7 +60,7 @@ class InviteTest(LDAPTestCase):
                 )
 
         r = self.client.post(reverse('register'), d, follow=True)
-        
+
         u = User.objects.filter(email=d['email'])[0].get_profile()
         u.is_confirmed = True
         u.save()
@@ -90,10 +90,9 @@ class InviteTest(LDAPTestCase):
             Invite.objects.get(pk=invite.pk).redeemer)
 
         eq_(r.context['user'].is_vouched(), True)
-        
 
         # Don't reuse codes.
-        r = self.redeem_invite(invite, assertion='mr2reallylongstring', 
+        r = self.redeem_invite(invite, assertion='mr2reallylongstring',
                                email='mr2@gmail.com')
         eq_(r.context['user'].is_vouched(), False)
 

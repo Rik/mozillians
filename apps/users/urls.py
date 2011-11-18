@@ -4,7 +4,6 @@ from django.contrib.auth import views as auth_views
 
 from jinjautils import jinja_for_django
 
-from users import forms
 from . import views
 
 # So we can use the contrib logic for password resets, etc.

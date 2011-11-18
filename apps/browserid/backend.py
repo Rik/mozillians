@@ -1,13 +1,14 @@
-from django.conf import settings
-from django.contrib.auth.models import User, check_password
+from django.contrib.auth.models import User
 
 import ldap
 
 import commonware.log
 
 from larper import store_assertion, UserSession
-from larper import get_assertion
+
+
 log = commonware.log.getLogger('m.browserid')
+
 
 class SaslBrowserIDBackend(object):
     """Authenticates the user's BrowserID assertion and our audience
@@ -21,7 +22,7 @@ class SaslBrowserIDBackend(object):
         if request == None or assertion == None:
             return None
         store_assertion(request, assertion)
-        
+
         directory = UserSession(request)
         login_valid = False
         try:
@@ -33,16 +34,14 @@ class SaslBrowserIDBackend(object):
                 # TODO, use this on a browserid registration page
                 request.session['verified_email'] = details
         except ldap.OTHER, o:
-            # TODO... 
             log.error("LDAP error, clearing session assertion")
-            store_assertion(request, None)
-            # OTHER: {'info': 'SASL(-5): bad protocol / cancel: Browserid.org assertion verification failed.', 'desc': 'Other (e.g., implementation specific) error'}
-            # such as stale assertion - timeout
             log.error(o)
+            store_assertion(request, None)
+            # such as stale assertion - timeout
         except Exception, e:
             log.error("Unknown error, clearing session assertion")
-            store_assertion(request, None)
             log.error(e)
+            store_assertion(request, None)
 
         if login_valid:
             try:
@@ -53,7 +52,7 @@ class SaslBrowserIDBackend(object):
                 log.info("Mirroring user data into DB for metrics")
                 user = User(username=person.username,
                             first_name=person.first_name,
-                            last_name = person.last_name,
+                            last_name=person.last_name,
                             email=person.username)
                 user.set_unusable_password()
                 user.is_active = True

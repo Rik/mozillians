@@ -19,7 +19,8 @@ class PermissionDeniedMiddleware(object):
         if isinstance(response, (HttpResponseForbidden,
                                  HttpResponseNotAllowed)):
             if request.user.is_authenticated():
-                log.info("Permission denied middleware, user was authenticated, sending 500")
+                log.info("Permission denied middleware, user was "
+                         "authenticated, sending 500")
                 return error_page(request, 500, status=response.status_code)
             else:
                 if isinstance(response, (HttpResponseForbidden)):

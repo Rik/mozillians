@@ -32,6 +32,15 @@ In development environments, for ease of use we can run:
 Additinally the schema migrations for this session table are bundled
 in the project for ease of development.
 
+DROP TABLE IF EXISTS browserid_session;
+CREATE TABLE browserid_session (
+    digest    CHAR(32),
+    email     VARCHAR(1024),
+    created   TIMESTAMP,
+    INDEX lookup (digest),
+    INDEX cleanup (created)
+);
+
 """
 import sys
 

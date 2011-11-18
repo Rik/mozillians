@@ -49,6 +49,7 @@ def create_user_profile(sender, instance, created, **kwargs):
                for d in settings.AUTO_VOUCH_DOMAINS):
             profile.groups.add(Group.objects.get(name='staff', system=True))
 
+
 @receiver(models.signals.pre_save, sender=UserProfile)
 def generate_code(sender, instance, raw, using, **kwargs):
     if instance.confirmation_code:

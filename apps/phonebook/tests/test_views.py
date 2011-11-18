@@ -1,5 +1,3 @@
-from uuid import uuid4
-
 from django.contrib.auth.models import User
 from django import test
 
@@ -36,7 +34,7 @@ class TestDeleteUser(LDAPTestCase):
         we can test both non-vouched and vouched user's ability to delete
         their own profile.
         """
-        for user, assertion in [(MOZILLIAN, MOZ_ASSER), 
+        for user, assertion in [(MOZILLIAN, MOZ_ASSER),
                      (PENDING, PND_ASSER)]:
             self._delete_flow(user, assertion)
         call(path('directory/devslapd/bin/x-rebuild'))
@@ -78,7 +76,7 @@ class TestDeleteUser(LDAPTestCase):
 
         self.assertFalse(_logged_in_html(r))
 
-################ class TestViews(init2.LDAPTestCase) ######################
+
 class TestViews(LDAPTestCase):
     def test_anonymous_home(self):
         r = self.client.get('/', follow=True)
@@ -154,23 +152,26 @@ class TestViews(LDAPTestCase):
         r = self.mozillian_client.get(url, dict(q='Amand', page='test'))
         peeps = r.context['people']
         self.assertEqual(len(peeps), 2)
-    
+
         r = self.mozillian_client.get(url, dict(q='Amand', page='1'))
         peeps = r.context['people']
         self.assertEqual(len(peeps), 2)
- 
-        r = self.mozillian_client.get(url, dict(q='Amand', page='test', limit='1'))
+
+        r = self.mozillian_client.get(url, dict(q='Amand', page='test',
+                                                limit='1'))
         peeps = r.context['people']
         self.assertEqual(len(peeps), 1)
 
-        r = self.mozillian_client.get(url, dict(q='Amand', page='test', limit='x'))
+        r = self.mozillian_client.get(url, dict(q='Amand', page='test',
+                                                limit='x'))
         peeps = r.context['people']
         self.assertEqual(len(peeps), 2)
 
-        r = self.mozillian_client.get(url, dict(q='Amand', page='test', limit='-3'))
+        r = self.mozillian_client.get(url, dict(q='Amand', page='test',
+                                                limit='-3'))
         peeps = r.context['people']
         self.assertEqual(len(peeps), 2)
-    
+
     def test_mozillian_sees_mozillian_profile(self):
         # HACK: This user isn't made by default. WTF?
         User.objects.create(username=OTHER_MOZILLIAN['email'],
@@ -294,18 +295,15 @@ class TestOpensearchViews(test_utils.TestCase):
         assert '/fr/search' in response.content
 
 
-
 def _logged_in_html(response):
     doc = pq(response.content)
     return doc('a#logout') and doc('a#profile')
 
 
 def _create_new_user():
-    print('=============================================================================================================')
-    print('create new user in the house!')
     newbie_client = test.Client()
     newbie_email = 'new@test.net'
-    assertion='newabcdefghi'
+    assertion = 'newabcdefghi'
     data = dict(assertion=assertion, mode='register')
     r = newbie_client.post(reverse('browserid_login'), data, follow=True)
 

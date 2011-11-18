@@ -23,17 +23,21 @@ AMANDA_NAME = 'Amanda Younger'
 
 call = lambda x: subprocess.Popen(x, stdout=subprocess.PIPE).communicate()
 
+
 class LDAPTestCase(test_utils.TestCase):
+
     @classmethod
     def setup_class(cls):
         import os
         os.environ['OPENLDAP_DB_PATH'] = '/home/vagrant/openldap-db'
         call(path('directory/devslapd/bin/x-rebuild'))
+
     def setUp(self):
-        self.pending_client   = mozillian_client(email=PENDING['email'],
-                                                 assertion=PND_ASSER)
+        self.pending_client = mozillian_client(email=PENDING['email'],
+                                               assertion=PND_ASSER)
         self.mozillian_client = mozillian_client(email=MOZILLIAN['email'],
                                                  assertion=MOZ_ASSER)
+
 
 def mozillian_client(email, assertion):
     """Create and return an authorized Mozillian test client.
@@ -41,7 +45,7 @@ def mozillian_client(email, assertion):
     We can't use client.login because of bugs like
     https://code.djangoproject.com/ticket/11475
 
-    We step the client through the actual auth process so 
+    We step the client through the actual auth process so
     sessions will be all setup properly.
     """
     client = test.Client()

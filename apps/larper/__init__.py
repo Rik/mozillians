@@ -54,6 +54,7 @@ log = commonware.log.getLogger('m.larper')
 ASSERTION_SIGNED_KEY = 'ASSERTION'
 ASSERTION_KEY = 'assertion'
 
+
 def get_assertion(request):
     """ Not sure if this and store_assertion belong here..."""
     d = request.session.get(ASSERTION_SIGNED_KEY)
@@ -96,8 +97,9 @@ KNOWN_SERVICE_URIS = [
     MOZILLA_IRC_SERVICE_URI,
 ]
 
-KNOWN_USER = re.compile('dn:uniqueIdentifier=([^,]*),ou=people,dc=mozillians,dc=org')
-NEW_USER   = re.compile('dn:uid=([^,]*),cn=browser-id,cn=auth')
+_r = 'dn:uniqueIdentifier=([^,]*),ou=people,dc=mozillians,dc=org'
+KNOWN_USER = re.compile(_r)
+NEW_USER = re.compile('dn:uid=([^,]*),cn=browser-id,cn=auth')
 PEEP_SRCH_FLTR = '(&(objectClass=mozilliansPerson)(|(cn=*%s*)(mail=*%s*)))'
 IRC_SRCH_FLTR = """(&(objectClass=mozilliansLink)(mozilliansServiceID=*%s*)
                      (mozilliansServiceURI=irc://irc.mozilla.org/))"""
@@ -124,23 +126,24 @@ class UserSession(object):
         adding, modifying, or deleting entires.
 
         UserSession connections will be established with
-        an assertion stored in the user's session. 
+        an assertion stored in the user's session.
 
-        Raises exceptions if this class is used with a 
+        Raises exceptions if this class is used with a
         non-authenticated user (Anonymous).
         """
         return self._ensure_conn_sasl(mode)
 
     def _ensure_conn_sasl(self, mode):
-        """Using the assertion from the user's session, 
+        """Using the assertion from the user's session,
         connects to LDAP via sasl_interactive_bind and
         the BROWSER-ID auth mechanism."""
         assrtn_hsh, assertion = get_assertion(self.request)
         if not assertion:
-            raise Exception("Programming error, do not use UserSession without an assertion")
+            raise Exception("Programming error, do not use UserSession "
+                            "without an assertion")
         if not hasattr(self.request, CONNECTIONS_KEY):
             self.request.larper_conns = [{}, {}]
-        fresh_bind = False        
+        fresh_bind = False
         if assrtn_hsh not in self.request.larper_conns[mode]:
             if mode == WRITE:
                 server_uri = settings.LDAP_SYNC_PROVIDER_URI
@@ -161,7 +164,7 @@ class UserSession(object):
 
     def _ensure_conn_simple(self, mode):
         """Using the dn and password from the apps config
-        connects to LDAP via simple bind. Useful for 
+        connects to LDAP via simple bind. Useful for
         non-human agents."""
         dn, password = self.dn_pass()
         if not hasattr(self.request, CONNECTIONS_KEY):
@@ -202,12 +205,8 @@ class UserSession(object):
         Subclasses of UserSession should override this method
         if they don't auth against the user in the session.
         """
-        raise Exception("UserSession should be used with an assertion, not dn/password")
-
-
-    def whoami(self):
-        conn = self._ensure_conn(READ)
-        return self.conn.whoami_s()
+        raise Exception("UserSession should be used with an assertion, "
+                        "not dn/password")
 
     def registered_user(self):
         """Checks if the current user is registered in the system.
@@ -221,7 +220,7 @@ class UserSession(object):
         conn = self._ensure_conn(READ)
         dn = conn.whoami_s()
         m = KNOWN_USER.match(dn)
-        if m:            
+        if m:
             return (True, m.group(1))
         else:
             m = NEW_USER.match(dn)
@@ -266,7 +265,8 @@ class UserSession(object):
         use_master can be set to True to force reading from master
         where stale data isn't acceptable.
         """
-        q = filter_format("(&(objectClass=mozilliansPerson)(uniqueIdentifier=%s))", (unique_id,))
+        f = "(&(objectClass=mozilliansPerson)(uniqueIdentifier=%s))"
+        q = filter_format(f, (unique_id,))
         msg = 'Unable to locate %s in the LDAP directory'
         results = self._people_search(q, use_master)
 
@@ -815,7 +815,6 @@ class RegistrarSession(UserSession):
         """Overrides UserSession._ensure_conn"""
         return self._ensure_conn_simple(mode)
 
-
     def dn_pass(self):
         """Returns registrar dn and password."""
         return (settings.LDAP_REGISTRAR_DN, settings.LDAP_REGISTRAR_PASSWORD)
@@ -944,6 +943,7 @@ def set_password(username, password):
             log.info("Resetting %s password" % dn)
     finally:
         conn.unbind()
+
 
 def _return_all():
     """Return all LDAP records, provided no LIMITs are set."""

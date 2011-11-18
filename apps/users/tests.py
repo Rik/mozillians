@@ -1,4 +1,3 @@
-from django.core import mail
 from django.contrib.auth.models import User
 
 from funfactory.urlresolvers import reverse
@@ -10,6 +9,7 @@ from phonebook.tests import LDAPTestCase, PENDING
 
 
 Group.objects.get_or_create(name='staff', system=True)
+
 
 class TestThingsForPeople(LDAPTestCase):
     """Verify that the wrong users don't see things."""
@@ -42,7 +42,8 @@ class TestThingsForPeople(LDAPTestCase):
         """Ensure only anonymous users can register an account."""
         r = self.client.get(reverse('home'))
         self.assertTrue(200 == r.status_code,
-                        'Anonymous users can access the homepage to begin registration flow')
+                        "Anonymous users can access the homepage to "
+                        "begin registration flow")
 
         r = self.mozillian_client.get(reverse('register'))
         eq_(302, r.status_code,
@@ -59,6 +60,7 @@ class TestThingsForPeople(LDAPTestCase):
         errmsg = 'Self vouching... silliness.'
         assert not doc('#vouch-form button'), errmsg
         assert 'Vouch for me' not in r.content, errmsg
+
 
 def get_profile(email):
     """Get a UserProfile for a particular user."""

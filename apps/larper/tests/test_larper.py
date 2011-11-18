@@ -1,7 +1,5 @@
-from uuid import uuid4
-
 from nose.tools import eq_, ok_
-import test_utils
+
 from django.test.client import RequestFactory
 
 import larper
@@ -140,7 +138,6 @@ class TestLarper(LDAPTestCase):
         ok_(directory.update_person(unique_id, form_data))
         amandeep = directory.get_by_unique_id(unique_id)
         eq_(first_name, amandeep.first_name)
-
 
     def vouch_person(self, new_unique_id):
         request = _mock_request('/en-US/', username='u000001@mozillians.org')

@@ -7,17 +7,18 @@ from django.contrib.auth.signals import user_logged_in
 
 import commonware.log
 
-import larper
 from larper import UserSession
 
 log = commonware.log.getLogger('m.browserid')
 
 log.info("Setting up handle_login")
 
+
 def handle_login(sender, **kwargs):
     request = kwargs['request']
     if 'unique_id' in request.session:
-        log.info("Setting unique_id=%s from session on user" % request.session['unique_id'])
+        log.info("Setting unique_id=%s from session on user" % \
+                     request.session['unique_id'])
         request.user.unique_id = request.session['unique_id']
 
 user_logged_in.connect(handle_login)
@@ -76,7 +77,8 @@ def _populate(request):
     session = request.session
 
     if 'unique_id' in session:
-        log.info("Setting unique_id=%s from session on user" % session['unique_id'])
+        log.info("Setting unique_id=%s from session on user" % \
+                     session['unique_id'])
         user.unique_id = session['unique_id']
     elif hasattr(user, 'ldap_user'):
         unique_id = user.ldap_user.attrs['uniqueIdentifier'][0]

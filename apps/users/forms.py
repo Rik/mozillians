@@ -2,18 +2,16 @@ from django import forms
 from django.contrib import auth
 from django.contrib.auth.tokens import default_token_generator
 from django.contrib.sites.models import get_current_site
-from django.forms.util import ErrorList
 from django.template import loader
 from django.utils.http import int_to_base36
 
 import commonware.log
 
-import happyforms
-from tower import ugettext as _, ugettext_lazy as _lazy
+from tower import ugettext_lazy as _lazy
 
 import larper
 from phonebook.forms import ProfileForm
-from users.models import UserProfile
+
 
 log = commonware.log.getLogger('m.users')
 
@@ -25,6 +23,7 @@ class AuthenticationForm(auth.forms.AuthenticationForm):
 
         self.fields['username'] = forms.CharField(
                 max_length=255, required=True)
+
 
 class RegistrationForm(ProfileForm):
     code = forms.CharField(widget=forms.HiddenInput, required=False)

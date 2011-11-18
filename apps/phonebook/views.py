@@ -6,7 +6,6 @@ import django.contrib.auth
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
 from django.core.cache import cache
-from django.core.mail import send_mail
 from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from django.http import (Http404, HttpResponse, HttpResponseRedirect,
                          HttpResponseForbidden)
@@ -33,7 +32,6 @@ log = commonware.log.getLogger('m.phonebook')
 BAD_VOUCHER = 'Unknown Voucher'
 
 
-
 def vouch_required(f):
     """If a user is not vouched they get a 403."""
     @login_required(login_url='/')
@@ -47,9 +45,11 @@ def vouch_required(f):
 
     return wrapped
 
+
 @anonymous_csrf
 def home(request):
     return render(request, 'phonebook/home.html')
+
 
 @never_cache
 @login_required(login_url='/')
@@ -93,7 +93,6 @@ def _profile(request, person, use_master):
             # Bug#688788 Invalid voucher is okay
             person.voucher = BAD_VOUCHER
     elif request.user.unique_id != person.unique_id:
-        voucher = request.user.unique_id
         vouch_form = forms.VouchForm(initial=dict(
                 vouchee=person.unique_id))
 
@@ -174,6 +173,7 @@ def _edit_profile(request, new_account):
              user_groups=user_groups,
             )
     return render(request, 'phonebook/edit_profile.html', d)
+
 
 def _get_services_fields(ldap, unique_id, use_master=False):
     services = ldap.profile_service_ids(unique_id, use_master)
@@ -277,7 +277,7 @@ def search(request):
     return render(request, 'phonebook/search.html', d)
 
 
-@cache_page(60 * 60 * 168) # 1 week.
+@cache_page(60 * 60 * 168)  # 1 week.
 def search_plugin(request):
     """Render an OpenSearch Plugin."""
     return render(request, 'phonebook/search_opensearch.xml',

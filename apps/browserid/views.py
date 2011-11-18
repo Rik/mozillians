@@ -1,6 +1,3 @@
-import ldap
-
-
 from django.contrib import auth
 from django.shortcuts import redirect
 from django.views.decorators.http import require_POST
@@ -8,19 +5,13 @@ from django.views.decorators.http import require_POST
 import commonware.log
 from funfactory.urlresolvers import reverse
 from funfactory.utils import absolutify
-#from django_browserid.forms import BrowserIDForm
-from session_csrf import anonymous_csrf
 
 from browserid.forms import ModalBrowserIdForm
-from larper import store_assertion, UserSession
+from larper import store_assertion
 
 
 log = commonware.log.getLogger('m.browserid')
 
-# TODO: 
-# * remove login
-# * I think I need to write a backend auth package.
-# * Consider renaming this app to django-sasl-browserid
 
 @require_POST
 def browserid_login(request):
@@ -50,4 +41,3 @@ def browserid_login(request):
     else:
         log.warning("Form didn't validate %s" % str(request.POST))
         return redirect('home')
-        

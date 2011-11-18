@@ -1,19 +1,16 @@
 import datetime
 import ldap
 
-from django import http
 from django.shortcuts import get_object_or_404, redirect, render
 from django.conf import settings
-from django.contrib import auth, messages
-from django.contrib.auth import views as auth_views
-from django.contrib.auth.tokens import default_token_generator
+from django.contrib import auth
 from django.core.mail import send_mail
 
 import commonware.log
 from funfactory.urlresolvers import reverse
 from tower import ugettext as _
 
-from larper import UserSession, RegistrarSession, get_assertion
+from larper import RegistrarSession, get_assertion
 from phonebook.models import Invite
 from session_csrf import anonymous_csrf
 from users import forms
@@ -22,6 +19,7 @@ from users.models import UserProfile
 log = commonware.log.getLogger('m.users')
 
 get_invite = lambda c: Invite.objects.get(code=c, redeemed=None)
+
 
 class Anonymous:
     def __init__(self):
@@ -58,12 +56,12 @@ def confirm(request):
 
 @anonymous_csrf
 def register(request):
-    """ TODO... ?code=foo to pre-vouch 
+    """ TODO... ?code=foo to pre-vouch
     Maybe put it into the session?
     """
     # Legacy URL shenanigans - A GET to register with invite code
     # is a legal way to start the BrowserID registration flow.
-    
+
     if 'code' in request.GET:
         request.session['invite-code'] = request.GET['code']
         return redirect('home')
@@ -78,8 +76,6 @@ def register(request):
     email = request.session['verified_email']
 
     intent = 'register'
-
-    directory = UserSession.connect(request)
 
     # Check for optional invite code
     initial = {}
@@ -108,12 +104,13 @@ def register(request):
     anonymous = Anonymous()
 
     return render(request, 'phonebook/edit_profile.html',
-                  dict(form=form, 
+                  dict(form=form,
                        edit_form_action=reverse('register'),
-                       person=anonymous, 
-                       mode='new', 
-                       email=email, 
+                       person=anonymous,
+                       mode='new',
+                       email=email,
                        intent=intent))
+
 
 def password_reset_confirm(request, uidb36=None, token=None):
     """Legacy URL, keep around until 1.4 release."""
@@ -125,7 +122,7 @@ def _save_new_user(request, form):
     form - must be a valid form
 
     We persist account to LDAP. If all goes well, we
-    log the user in and persist their BID assertion to the 
+    log the user in and persist their BID assertion to the
     session.
     """
     # Email in the form is the "username" we'll use.
