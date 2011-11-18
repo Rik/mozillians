@@ -17,7 +17,7 @@ from phonebook.views import vouch_required
 log = commonware.log.getLogger('m.groups')
 
 
-@login_required
+@login_required(login_url='/')
 def index(request):
     """Lists all public groups (in use) on Mozillians."""
     paginator = Paginator(Group.objects.all(), PAGINATION_LIMIT)
@@ -49,7 +49,7 @@ def show(request, id, url=None):
     return render(request, 'groups/show.html', data)
 
 
-@login_required
+@login_required(login_url='/')
 @cache_control(must_revalidate=True, max_age=3600)
 def search(request):
     """Simple wildcard search for a group using a GET parameter."""
