@@ -66,10 +66,6 @@ class InviteTest(LDAPTestCase):
         u.save()
 
         return r
-        #self.client.post(reverse('login'),
-        #                        dict(username=d['email'],
-        #                             password=d['password']),
-        #                        follow=True)
 
     def test_send_invite_flow(self):
         """

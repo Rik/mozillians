@@ -57,15 +57,6 @@ def confirm(request):
 
 
 @anonymous_csrf
-def login(request, **kwargs):
-    """Login view that wraps Django's login but redirects auth'd users."""
-    # TODO delete these
-    return (auth_views.login(request, **kwargs)
-            if request.user.is_anonymous()
-            else redirect(reverse('profile', args=[request.user.unique_id])))
-
-
-@anonymous_csrf
 def register(request):
     """ TODO... ?code=foo to pre-vouch 
     Maybe put it into the session?
@@ -173,7 +164,6 @@ def _save_new_user(request, form):
     assrtn_hsh, assertion = get_assertion(request)
     user = auth.authenticate(request=request, assertion=assertion)
 
-    # TODO.. this is in HEAD, can we get rid of it?
     # Should never happen
     if not user or not user.is_authenticated():
         msg = 'Authentication for new user (%s) failed' % username

@@ -144,7 +144,7 @@ bits don't match our requirements.
 We use the `SASL BROWSER-ID`_ authentication mechanism via a plugin running
 under OpenLDAP.
 
-The remaining glue is provided by apps/django-sasl-browserid
+The remaining glue is provided by apps/browserid.
 
 .. _`django-browserid`: https://github.com/mozilla/django-browserid
 .. _`SASL BROWSER-ID`: https://github.com/ozten/sasl-browserid
