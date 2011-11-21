@@ -467,6 +467,10 @@ background-image: -moz-linear-gradient(
     width: 47.5%;
 }
 
+#body-edit-profile #optin-container {
+    width: 50%;
+}
+
 #body-edit-profile #optin-container label {
     width: 44%;
     float: left;
@@ -753,27 +757,32 @@ background-image: -moz-linear-gradient(
     float: right;
 }
 
-button#create_profile {
+/* TODO: I need other vendor prefixed gradients */
+#body-home #create_profile {
     background: -moz-linear-gradient(center top , #B1DAFA, #3AA8FF) repeat scroll 0 0 transparent;
     border: 1px solid #3697E5;
-    border-radius: 1px 1px 1px 1px;
+    border-radius: 1px;
     white-space: nowrap;
 }
-button#create_profile:hover {
+
+#body-home #create_profile:hover {
     background: -moz-linear-gradient(center top , #B1DAFA, #59B4FE) repeat scroll 0 0 transparent;
     border: 1px solid #3697E5;
 }
-button#create_profile:active {
+
+#body-home #create_profile:active {
     background: -moz-linear-gradient(center top , #8DCAFC, #3AA8FF) repeat scroll 0 0 transparent;
     border: 1px solid #3697E5;
 }
-.id, .signin {
+
+#body-home .id, #body-home .signin {
     font-size: 12px;
     font-weight: bold;
     line-height: 21px;
     padding: 1px 10px;
 }
-.id {
+
+#body-home .id {
     border-right: 1px solid #4DAFFE;
     box-shadow: 1px 0 0 #ACDAFF;
     display: inline-block;
@@ -781,15 +790,18 @@ button#create_profile:active {
     padding-left: 5px;
     padding-right: 5px;
 }
-.signin {
+
+#body-home .signin {
     color: #FFFFFF;
     text-shadow: 0 -0.7px 0 #3497E4, 0 1px 1px #3497E4;
 }
-.bid, .arrow {
+
+#body-home .bid, #body-home .arrow {
     font-size: 13px;
     line-height: 9px;
 }
-.bid {
+
+#body-home .bid {
     background-color: white;
     color: #7DC4FC;
     display: inline-block;
@@ -797,10 +809,13 @@ button#create_profile:active {
     padding: 2px 0 2px 2px;
     text-shadow: 0 -0.5px 0 #499DF3;
 }
-.bid-webkit {
+
+/* TODO, do we need this? */
+#body-home .bid-webkit {
     line-height: 11px;
 }
-.arrow {
+
+#body-home .arrow {
     border-color: transparent transparent transparent white;
     border-style: outset;
     border-width: 6px 0 7px 4px;
@@ -810,6 +825,7 @@ button#create_profile:active {
     vertical-align: middle;
     width: 0;
 }
-.arrow-webkit {
+
+#body-home .arrow-webkit {
     margin-bottom: 4px;
 }

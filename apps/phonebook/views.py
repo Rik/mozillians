@@ -15,7 +15,6 @@ from django.views.decorators.http import require_POST
 
 import commonware.log
 from funfactory.urlresolvers import reverse
-from session_csrf import anonymous_csrf
 from tower import ugettext as _
 
 from groups.models import Group
@@ -44,11 +43,6 @@ def vouch_required(f):
             return HttpResponseForbidden(_('You must be vouched to do this.'))
 
     return wrapped
-
-
-@anonymous_csrf
-def home(request):
-    return render(request, 'phonebook/home.html')
 
 
 @never_cache
@@ -84,8 +78,7 @@ def _profile(request, person, use_master):
     vouch_form = None
     ldap = UserSession.connect(request)
 
-    #if person.voucher_unique_id or cache.get('vouched_' + person.unique_id):
-    if person.voucher_unique_id:
+    if person.voucher_unique_id or cache.get('vouched_' + person.unique_id):
         try:
             # Stale data okay
             person.voucher = ldap.get_by_unique_id(person.voucher_unique_id)
@@ -277,7 +270,7 @@ def search(request):
     return render(request, 'phonebook/search.html', d)
 
 
-@cache_page(60 * 60 * 168)  # 1 week.
+@cache_page(60 * 60 * 168) # 1 week.
 def search_plugin(request):
     """Render an OpenSearch Plugin."""
     return render(request, 'phonebook/search_opensearch.xml',

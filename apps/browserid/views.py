@@ -1,10 +1,12 @@
 from django.contrib import auth
+from django.contrib import messages
 from django.shortcuts import redirect
 from django.views.decorators.http import require_POST
 
 import commonware.log
 from funfactory.urlresolvers import reverse
 from funfactory.utils import absolutify
+from tower import ugettext as _
 
 from browserid.forms import ModalBrowserIdForm
 from larper import store_assertion
@@ -15,7 +17,9 @@ log = commonware.log.getLogger('m.browserid')
 
 @require_POST
 def browserid_login(request):
-    """Handles login and register browserid verification. If
+    """Multi-mode BrowserID authentication form processor.
+
+    Handles login and register browserid verification. If
     the mode is login, we are done. If the mode is register
     then we start new profile flow. Also handles corner cases.
 
@@ -23,9 +27,10 @@ def browserid_login(request):
     and the corner cases blur the lines, so this is best as one
     url.
 
-    We use contextprocessor, form, and ??? from django-browserid,
-    but since the LDAP server does the BrowserID auth behind the
-    scenes, we don't use it's auth code nor it's views."""
+    We use the form from django-browserid, but since the LDAP server
+    does the BrowserID auth behind the scenes, we don't use it's auth code
+    nor it's views.
+    """
     form = ModalBrowserIdForm(data=request.POST)
     if form.is_valid():
         assertion = form.cleaned_data['assertion']
@@ -39,5 +44,8 @@ def browserid_login(request):
             url = absolutify("%s?link=%s" % (reverse('register'), mode))
             return redirect(url)
     else:
+        msg = _('Sorry, but there were problems with the info you submitted. '
+                'Please review the form, correct any errors, and try again.')
+        messages.warning(request, msg)
         log.warning("Form didn't validate %s" % str(request.POST))
         return redirect('home')

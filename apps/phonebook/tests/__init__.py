@@ -1,4 +1,3 @@
-
 import subprocess
 
 from django.contrib.auth.models import User
@@ -12,11 +11,11 @@ from funfactory.urlresolvers import reverse
 from funfactory.manage import path
 
 MOZILLIAN = dict(email='u000001@mozillians.org', uniq_id='7f3a67u000001')
-MOZ_ASSER = 'abcdefghijklmnop'
+MOZ_ASSERTION = 'abcdefghijklmnop'
 PENDING = dict(email='u000003@mozillians.org', uniq_id='7f3a67u000003')
-PND_ASSER = 'qrstuvwxyz'
+PND_ASSERTION = 'qrstuvwxyz'
 OTHER_MOZILLIAN = dict(email='u000098@mozillians.org', uniq_id='7f3a67u000098')
-OTH_ASSER = 'somelongstring'
+OTH_ASSERTION = 'somelongstring'
 AMANDEEP_NAME = 'Amandeep McIlrath'
 AMANDEEP_VOUCHER = '7f3a67u000001'
 AMANDA_NAME = 'Amanda Younger'
@@ -33,10 +32,12 @@ class LDAPTestCase(test_utils.TestCase):
         call(path('directory/devslapd/bin/x-rebuild'))
 
     def setUp(self):
+        """We'll use multiple clients at the same time."""
+
         self.pending_client = mozillian_client(email=PENDING['email'],
-                                               assertion=PND_ASSER)
+                                               assertion=PND_ASSERTION)
         self.mozillian_client = mozillian_client(email=MOZILLIAN['email'],
-                                                 assertion=MOZ_ASSER)
+                                                 assertion=MOZ_ASSERTION)
 
 
 def mozillian_client(email, assertion):

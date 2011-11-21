@@ -16,7 +16,7 @@
      * Fragile magick - forms are named browserid-login 
      * and browserid-register
      */
-    var _bid_fn = function (mode) {
+    var _bid_fn = function(mode) {
         return function(event) {
             var form;
             event.preventDefault();

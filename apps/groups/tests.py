@@ -4,8 +4,8 @@ from funfactory.urlresolvers import reverse
 from nose.tools import eq_
 from pyquery import PyQuery as pq
 
-from phonebook.tests import LDAPTestCase, MOZILLIAN, MOZ_ASSER,\
-    PENDING, PND_ASSER, mozillian_client
+from phonebook.tests import MOZILLIAN, MOZ_ASSERTION, PENDING, PND_ASSERTION
+from phonebook.tests import LDAPTestCase, mozillian_client
 from groups.helpers import stringify_groups
 from groups.models import Group
 from users.tests import get_profile
@@ -40,7 +40,7 @@ class GroupTest(LDAPTestCase):
         """Ensure groups are case insensitive."""
         profile = get_profile(MOZILLIAN['email'])
 
-        client = mozillian_client(MOZILLIAN['email'], MOZ_ASSER)
+        client = mozillian_client(MOZILLIAN['email'], MOZ_ASSERTION)
         client.post(reverse('phonebook.edit_profile'),
                     dict(
                          last_name='tofumatt',
@@ -69,7 +69,7 @@ class GroupTest(LDAPTestCase):
         profile = get_profile(PENDING['email'])
         assert not profile.groups.all(), 'User should have no groups.'
 
-        client = mozillian_client(PENDING['email'], PND_ASSER)
+        client = mozillian_client(PENDING['email'], PND_ASSERTION)
         client.post(reverse('phonebook.edit_profile'),
                     dict(last_name='McAwesomepants', groups='Awesome foo Bar'),
                     follow=True)
@@ -84,7 +84,7 @@ class GroupTest(LDAPTestCase):
         assert not profile.groups.all(), (
                 'User has no groups at beginning of test.')
 
-        client = mozillian_client(MOZILLIAN['email'], MOZ_ASSER)
+        client = mozillian_client(MOZILLIAN['email'], MOZ_ASSERTION)
         client.post(reverse('phonebook.edit_profile'),
                     dict(
                          last_name='McAwesomepants',
@@ -105,7 +105,7 @@ class GroupTest(LDAPTestCase):
         """Make sure users can't add system groups to their profile."""
         profile = get_profile(MOZILLIAN['email'])
 
-        client = mozillian_client(MOZILLIAN['email'], MOZ_ASSER)
+        client = mozillian_client(MOZILLIAN['email'], MOZ_ASSERTION)
         client.post(reverse('phonebook.edit_profile'),
                     dict(
                          last_name='tofumatt',
@@ -133,7 +133,7 @@ class GroupTest(LDAPTestCase):
         eq_(2, profile.groups.count(), 'User should have both groups.')
 
         # Edit this user's profile and remove a group.
-        client = mozillian_client(MOZILLIAN['email'], MOZ_ASSER)
+        client = mozillian_client(MOZILLIAN['email'], MOZ_ASSERTION)
         response = client.post(reverse('phonebook.edit_profile'),
                                dict(last_name="McLovin'", groups=''),
                                follow=True)

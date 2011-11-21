@@ -22,7 +22,9 @@ get_invite = lambda c: Invite.objects.get(code=c, redeemed=None)
 
 
 class Anonymous:
+    """Anonymous user provides minimum data for views and templates."""
     def __init__(self):
+        """Constructor always returns 0 for unique_id."""
         self.unique_id = 0
 
 
@@ -56,8 +58,10 @@ def confirm(request):
 
 @anonymous_csrf
 def register(request):
-    """ TODO... ?code=foo to pre-vouch
-    Maybe put it into the session?
+    """Multi-purpose registration view.
+
+    Uses: legacy email url with invite code, first time edit profile
+    after browserid_login. Process POST and create new users.
     """
     # Legacy URL shenanigans - A GET to register with invite code
     # is a legal way to start the BrowserID registration flow.

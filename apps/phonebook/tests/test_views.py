@@ -1,5 +1,5 @@
-from django.contrib.auth.models import User
 from django import test
+from django.contrib.auth.models import User
 
 from pyquery import PyQuery as pq
 
@@ -9,9 +9,9 @@ import test_utils
 
 from nose.tools import eq_
 
-from phonebook.tests.init2 import LDAPTestCase, AMANDA_NAME, AMANDEEP_NAME,\
-    AMANDEEP_VOUCHER, MOZILLIAN, PENDING,\
-    OTHER_MOZILLIAN, mozillian_client, MOZ_ASSER, PND_ASSER, call
+from phonebook.tests import LDAPTestCase, AMANDA_NAME, AMANDEEP_NAME,\
+    AMANDEEP_VOUCHER, MOZILLIAN, MOZ_ASSERTION, OTHER_MOZILLIAN, PENDING,\
+    PND_ASSERTION, mozillian_client, call
 
 from phonebook.views import UNAUTHORIZED_DELETE
 
@@ -34,8 +34,8 @@ class TestDeleteUser(LDAPTestCase):
         we can test both non-vouched and vouched user's ability to delete
         their own profile.
         """
-        for user, assertion in [(MOZILLIAN, MOZ_ASSER),
-                     (PENDING, PND_ASSER)]:
+        for user, assertion in [(MOZILLIAN, MOZ_ASSERTION),
+                     (PENDING, PND_ASSERTION)]:
             self._delete_flow(user, assertion)
         call(path('directory/devslapd/bin/x-rebuild'))
 

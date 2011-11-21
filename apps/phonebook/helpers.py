@@ -6,6 +6,8 @@ from funfactory.urlresolvers import reverse
 from funfactory.utils import absolutify
 from jingo import register
 
+import larper
+
 
 PARAGRAPH_RE = re.compile(r'(?:\r\n|\r|\n){2,}')
 
@@ -23,7 +25,10 @@ def paragraphize(value):
 @register.filter
 def vouched(user):
     if hasattr(user, 'is_vouched'):
-        return user.is_vouched()
+        try:
+            return user.is_vouched()
+        except larper.NO_SUCH_PERSON:
+            return False
 
 
 @register.inclusion_tag('phonebook/includes/photo.html')

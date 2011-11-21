@@ -17,8 +17,8 @@ log.info("Setting up handle_login")
 def handle_login(sender, **kwargs):
     request = kwargs['request']
     if 'unique_id' in request.session:
-        log.info("Setting unique_id=%s from session on user" % \
-                     request.session['unique_id'])
+        log.info("Setting unique_id=%s from session on user" %
+                 request.session['unique_id'])
         request.user.unique_id = request.session['unique_id']
 
 user_logged_in.connect(handle_login)
@@ -35,8 +35,7 @@ class LarperMiddleware(object):
     with the following attributes:
     * unique_id
 
-    This complements the assertion management from larper.get_assertion
-    larper.password
+    This complements the assertion management from larper.get_assertion.
     """
     def process_request(self, request):
         if not hasattr(request, 'user'):
