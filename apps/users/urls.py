@@ -11,13 +11,9 @@ auth_views.render_to_response = jinja_for_django
 
 
 urlpatterns = patterns('',
-    url(r'^logout$', auth_views.logout, dict(redirect_field_name='next'),
-        name='logout'),
+    url(r'^logout$', views.logout, name='logout'),
 
     url(r'^register$', views.register, name='register'),
-    url(r'^confirm$', views.confirm, name='confirm'),
-    url(r'^send_confirmation$', views.send_confirmation,
-        name='send_confirmation'),
     # TODO: remove in 1.4 release, legacy url sent in emails
     url(r'^password_reset_confirm/'
          '(?P<uidb36>[0-9A-Za-z]{1,13})-(?P<token>[0-9A-Za-z]{1,13}-'
@@ -25,7 +21,3 @@ urlpatterns = patterns('',
         redirect_to, dict(url='/',
         name='password_reset_confirm')),
 )
-
-#@def password_reset_confirm(request, uidb36=None, token=None):
-#    """Legacy URL, keep around until 1.4 release."""
-#    return redirect('home')

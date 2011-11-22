@@ -1,5 +1,6 @@
 {% extends "base.html" %}
 
+{% block page_title %}{{ person.full_name }}{% endblock %}
 {% block body_id %}profile{% endblock %}
 {% block body_classes %}
     box-content {% if not person.voucher %}pending{% endif %}
@@ -7,7 +8,7 @@
 
 {% block main_content %}
   <h1>
-    {% if user.username == person.username %}
+    {% if user.unique_id == person.unique_id %}
       {{ _('Your Profile') }}
     {% elif person.voucher %}
       {{ _('Mozillian Profile') }}
@@ -16,8 +17,8 @@
     {% endif %}
   </h1>
 
-  {% if not person.voucher %}
-    {% if user.username == person.username %}
+  {% if not person.get_profile().is_vouched %}
+    {% if user.unique_id == person.unique_id %}
       <p id="pending-approval">
         {% trans profile_url=absolutify(url('profile', user.unique_id)) %}
           Your profile is waiting for approval. Send this link to someone who
@@ -43,7 +44,7 @@
             {{ vouch_form }}
 
             {% trans name=person.full_name %}
-              <button type="submit" class="button orange small">
+              <button type="submit" class="button primary small">
                 Vouch for {{ name }}
               </button>
             {% endtrans %}
@@ -58,9 +59,9 @@
   <div class="blue-pastels vcard h-card">
     {{ profile_photo(person) }}
 
-    {% if user.username == person.username %}
+    {% if user.unique_id == person.unique_id %}
       <a href="{{ url('phonebook.edit_profile') }}"
-        class="button blue small" id="edit-profile">
+        class="button primary small" id="edit-profile">
         {{ _('Edit My Profile') }}
       </a>
     {% endif %}
@@ -79,9 +80,9 @@
         {% endif %}
 
         {% if person.irc_nickname %}
-          <dt>{{_('IRC Nickname') }}</dt>
-          <dd><a class="nickname p-nickname" rel="me" href="{{ person.irc_nickname.service_uri }}">
-            {{person.irc_nickname.service_id}}
+          <dt>{{ _('IRC Nickname') }}</dt>
+          <dd><a class="nickname p-nickname" href="{{ person.irc_nickname.service_uri }}">
+            {{ person.irc_nickname.service_id }}
           </a></dd>
         {% endif %}
 
@@ -93,12 +94,13 @@
         {% endfor %}
 
         {% if person.voucher == "Unknown Voucher" %}
-          <!-- This user's voucher is no longer active. -->
+          <dt>{{ _('Vouched by') }}</dt>
+          <dd>{{ _('No longer active') }}</dd>
         {% elif person.voucher %}
           <dt>{{ _('Vouched by') }}</dt>
           <dd>
-          <a href="{{ url('profile', person.voucher.unique_id) }}"
-            class="vouched">
+            <a href="{{ url('profile', person.voucher.unique_id) }}"
+               class="vouched">
               {{ person.voucher.full_name }}
             </a>
           </dd>
@@ -121,8 +123,8 @@
       <ul id="groups" class="tagit ui-widget ui-widget-content ui-corner-all">
         {% for group in groups %}
           <li class="tagit-choice ui-widget-content ui-state-default
-                     ui-corner-all">
-            {% if request.user|vouched %}
+                     ui-corner-all p-category category">
+            {% if request.user.get_profile().is_vouched %}
               <a href="{{ url('group', group.id, group.url) }}">
                 {{ group.name }}
               </a>

@@ -157,7 +157,7 @@ class TestViews(LDAPTestCase):
         peeps = r.context['people']
         self.assertEqual(len(peeps), 2)
 
-        r = self.mozillian_client.get(url, dict(q='Amand', page='test',
+        r = self.mozillian_client.get(url, dict(q='Amand', page='test', 
                                                 limit='1'))
         peeps = r.context['people']
         self.assertEqual(len(peeps), 1)
@@ -210,9 +210,9 @@ class TestViews(LDAPTestCase):
         profile = moz_client.get(newbie_profile_url)
         eq_(name, profile.context['person'].full_name,
             "Vouching worked and we're back on Newbie's profile")
-        voucher = profile.context['person'].voucher
+        voucher = profile.context['person'].get_profile().vouched_by
 
-        eq_(MOZILLIAN['uniq_id'], voucher.unique_id,
+        eq_(MOZILLIAN['uniq_id'], voucher.get_unique_id(),
             'Credit given')
         self.assertFalse(vouched_profile.context['vouch_form'],
                          'No need to vouch for this confirmed Mozillian')

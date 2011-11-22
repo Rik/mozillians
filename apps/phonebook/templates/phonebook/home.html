@@ -34,12 +34,12 @@
       <br>
       <a href="http://identity.mozilla.com/post/12950196039/deploying-browserid-at-mozilla"
          >{{ _('What is BrowserID&quest; Why are we using it&quest;') }}</a>
-    {% elif user|vouched %}
+    {% elif user.get_profile().is_vouched %}
       {% trans invite=url('invite') %}
         Tell other contributors about this directory and ask them to create a
         profile.
 
-        <br><a href="{{ invite }}" class="button orange">Invite a Mozillian</a>
+        <br><a href="{{ invite }}" class="button primary">Invite a Mozillian</a>
       {% endtrans %}
     {% endif %}
   </p>

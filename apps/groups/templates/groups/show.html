@@ -1,5 +1,8 @@
 {% extends "base.html" %}
 
+{% block page_title %}
+  {% trans name=group.name %}Users in Group "{{ name }}"{% endtrans %}
+{% endblock %}
 {% block body_id %}group-show{% endblock %}
 {% block body_classes %}
   box-content search-page group-name-{{ group.name }}
@@ -9,6 +12,23 @@
   {% trans name=group.name %}
     <h1>Users in Group "{{ name }}"</h1>
   {% endtrans %}
+
+  {% if not group.system %}
+    <form action="{{ url('group_toggle', group.id, group.url) }}"
+          id="toggle-group" method="post">
+      {{ csrf() }}
+
+      <button class="button {{ ('destructive' if in_group else 'primary') }}">
+        {% if not in_group %}
+          {{ _('Join Group') }}
+        {% else %}
+          {{ _('Leave Group') }}
+        {% endif %}
+      </button>
+    </form>
+  {% endif %}
+
+  <div class="clear"></div>
 
   <div class="blue-pastels">
     {% for user in users %}

@@ -28,7 +28,7 @@
         <p>
           {% trans logout=url('logout') %}
             <strong>{{ email }}</strong> does not have a profile.
-            If you think you've already created a profile, try 
+            If you think you've already created a profile, try
             <a id="browserid-retry-login" href="{{ logout }}">logging in</a>
             with a different email address.
           {% endtrans %}
@@ -134,12 +134,12 @@
           <span class="required" title="{{ _('This field is required.') }}">*</span>
           {{ form['optin'] }}
         </div>
-      {% endif %}      
+      {% endif %}
       <div class="clear"></div>
 
     </div>
 
-    <button id="submit" class="button orange">
+    <button id="submit" class="button primary">
       {% if registration_flow %}
         {{ _('Next') }}
       {% elif mode == 'new' %}
@@ -157,9 +157,9 @@
 
   </form>
 
-  {% if user.username == person.username %}
+  {% if user.unique_id == person.unique_id %}
     <div id="manage-profile">
-      <a class="button red small" href="{{ url('confirm_delete') }}"
+      <a class="button destructive small" href="{{ url('confirm_delete') }}"
          id="delete-profile">
         {{ _('Delete Profile') }}
       </a>

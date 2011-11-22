@@ -23,10 +23,9 @@ from larper import UserSession, AdminSession, NO_SUCH_PERSON
 from larper import MOZILLA_IRC_SERVICE_URI
 from phonebook import forms
 from phonebook.models import Invite
-
+from users.models import UserProfile
 
 log = commonware.log.getLogger('m.phonebook')
-
 
 BAD_VOUCHER = 'Unknown Voucher'
 
@@ -36,7 +35,7 @@ def vouch_required(f):
     @login_required(login_url='/')
     @wraps(f)
     def wrapped(request, *args, **kwargs):
-        if request.user.is_vouched():
+        if request.user.get_profile().is_vouched:
             return f(request, *args, **kwargs)
         else:
             log.warning('vouch_required forbidding access')
@@ -77,17 +76,11 @@ def profile_nickname(request, nickname):
 def _profile(request, person, use_master):
     vouch_form = None
     ldap = UserSession.connect(request)
+    profile = person.get_profile()
 
-    if person.voucher_unique_id or cache.get('vouched_' + person.unique_id):
-        try:
-            # Stale data okay
-            person.voucher = ldap.get_by_unique_id(person.voucher_unique_id)
-        except NO_SUCH_PERSON:
-            # Bug#688788 Invalid voucher is okay
-            person.voucher = BAD_VOUCHER
-    elif request.user.unique_id != person.unique_id:
-        vouch_form = forms.VouchForm(initial=dict(
-                vouchee=person.unique_id))
+    # TODO: rely more on db for this test
+    if not profile.is_vouched and request.user.unique_id != person.unique_id:
+        vouch_form = forms.VouchForm(initial=dict(vouchee=person.unique_id))
 
     services = ldap.profile_service_ids(person.unique_id, use_master)
 
@@ -99,8 +92,8 @@ def _profile(request, person, use_master):
     # Get user groups from their profile.
     groups = person.get_profile().groups.all()
 
-    data = dict(person=person, vouch_form=vouch_form, services=services,
-                groups=groups)
+    data = dict(person=person, profile=profile, vouch_form=vouch_form,
+                services=services, groups=groups)
     return render(request, 'phonebook/profile.html', data)
 
 
@@ -270,7 +263,7 @@ def search(request):
     return render(request, 'phonebook/search.html', d)
 
 
-@cache_page(60 * 60 * 168) # 1 week.
+@cache_page(60 * 60 * 168)  # 1 week.
 def search_plugin(request):
     """Render an OpenSearch Plugin."""
     return render(request, 'phonebook/search_opensearch.xml',
@@ -300,10 +293,22 @@ def invite(request):
     if request.method == 'POST':
         f = forms.InviteForm(request.POST)
         if f.is_valid():
+            ldap = UserSession.connect(request)
+            unique_id = request.user.unique_id
+            try:
+                person = ldap.get_by_unique_id(unique_id, use_master=True)
+            except NO_SUCH_PERSON:
+                log.info('profile_uid Sending 404 for [%s]' % unique_id)
+                raise Http404
+
+            sender = '"%s %s" <%s>' % (person.first_name,
+                                       person.last_name,
+                                       request.user.username)
+
             invite = f.save(commit=False)
             invite.inviter = request.user.unique_id
             invite.save()
-            invite.send(sender=request.user.username)
+            invite.send(sender=sender)
 
             return HttpResponseRedirect(reverse(invited, args=[invite.id]))
     else:
@@ -325,10 +330,13 @@ def vouch(request):
     """
     form = forms.VouchForm(request.POST)
     if form.is_valid():
-        ldap = UserSession.connect(request)
         data = form.cleaned_data
         vouchee = data.get('vouchee')
-        ldap.record_vouch(request.user.unique_id, vouchee)
+        # TODO: make the form give us the User's id...
+        p = UserProfile.objects.get_by_unique_id(vouchee)
+        p.vouch(request.user.get_profile())
+
+        # TODO: Is this still necessary?...
         cache.set('vouched_' + vouchee, True)
 
         # Notify the current user that they vouched successfully.

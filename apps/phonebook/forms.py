@@ -11,6 +11,7 @@ from tower import ugettext as _, ugettext_lazy as _lazy
 
 from phonebook.models import Invite
 from groups.models import Group
+from users.models import User
 
 
 PAGINATION_LIMIT = 20
@@ -138,5 +139,14 @@ class VouchForm(happyforms.Form):
 
 
 class InviteForm(happyforms.ModelForm):
+
+    def clean_recipient(self):
+        recipient = self.cleaned_data['recipient']
+
+        if User.objects.filter(email=recipient).count() > 0:
+            raise forms.ValidationError(_(u'You cannot invite someone who has '
+                                            'already been vouched.'))
+        return recipient
+
     class Meta:
         model = Invite

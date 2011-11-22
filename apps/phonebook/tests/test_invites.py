@@ -29,6 +29,9 @@ class InviteTest(LDAPTestCase):
 
         i = Invite.objects.get()
         invite_url = i.get_url()
+
+        assert ('"Bridget Hill" <u000001@mozillians.org>' in
+                mail.outbox[0].from_email)
         assert invite_url in mail.outbox[0].body, "No link in email."
         return i
 
@@ -74,6 +77,7 @@ class InviteTest(LDAPTestCase):
         Send an invite.  See that email is sent.
         See that link allows us to sign in and be auto-vouched.
         Verify that we can't reuse the invite_url
+        Verify we can't reinvite a vouched user
         """
         email = 'mr.fusion@gmail.com'
         assertion = 'mrfusionsomereallylongstring'

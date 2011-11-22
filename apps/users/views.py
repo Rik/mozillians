@@ -1,13 +1,13 @@
 import datetime
 import ldap
 
-from django.shortcuts import get_object_or_404, redirect, render
-from django.conf import settings
 from django.contrib import auth
-from django.core.mail import send_mail
+from django.contrib.auth import views as auth_views
+from django.shortcuts import redirect, render
 
 import commonware.log
 from funfactory.urlresolvers import reverse
+from statsd import statsd
 from tower import ugettext as _
 
 from larper import RegistrarSession, get_assertion
@@ -28,32 +28,14 @@ class Anonymous:
         self.unique_id = 0
 
 
-def _send_confirmation_email(user):
-    """This sends a confirmation email to the user."""
-    subject = _('Confirm your account')
-    message = (_("Please confirm your Mozillians account:\n\n %s") %
-               user.get_profile().get_confirmation_url())
-    send_mail(subject, message, 'no-reply@mozillians.org', [user.username])
+def logout(request, **kwargs):
+    """Logout view that wraps Django's logout but always redirects.
 
-
-def send_confirmation(request):
-    user = request.GET['user']
-    user = get_object_or_404(auth.models.User, username=user)
-    _send_confirmation_email(user)
-    return render(request, 'users/confirmation_sent.html')
-
-
-def confirm(request):
-    """Confirms a user.
-
-    1. Recognize the code or 404.
-    2. On recognition, mark user as confirmed.
+    Django's contrib.auth.views logout method renders a template if the
+    `next_page` argument is `None`, which we don't want. This view always
+    returns an HTTP redirect instead.
     """
-    code = request.GET['code']
-    profile = get_object_or_404(UserProfile, confirmation_code=code)
-    profile.is_confirmed = True
-    profile.save()
-    return render(request, 'users/confirmed.html')
+    return auth_views.logout(request, next_page=reverse('login'), **kwargs)
 
 
 @anonymous_csrf
@@ -152,27 +134,42 @@ def _save_new_user(request, form):
             msg = 'Bad code in form [%s], skipping pre-vouch' % d['code']
             log.warning(msg)
 
+    # we need to authenticate them... with their assertion
+    assrtn_hsh, assertion = get_assertion(request)
+
+    for i in range(1, 10):
+        try:
+            user = auth.authenticate(request=request, assertion=assertion)
+
+            # Should never happen
+            if not user or not user.is_authenticated():
+                msg = 'Authentication for new user (%s) failed' % username
+                # TODO: make this a unique exception.
+                raise Exception(msg)
+
+            statsd.incr('user.successful_registration')
+            statsd.incr('user.successful_registration_attempt_%s' % i)
+            break
+        except Exception, e:
+            statsd.incr('user.errors.registration_failed')
+            statsd.incr('user.errors.registration_failed_attempt_%s' % i)
+            log.warning(e)
+
+            # All hope is lost.
+            if i == 10:
+                statsd.incr('user.errors.user_record_never_created')
+                raise Exception(e)
+
     if voucher:
-        registrar.record_vouch(voucher=voucher, vouchee=uniq_id)
+        # TODO: invite system should use FKs not UIDs.
+        profile = user.get_profile()
+        profile.vouch(UserProfile.objects.get_by_unique_id(uniq_id))
         invite.redeemed = datetime.datetime.now()
         invite.redeemer = uniq_id
         invite.save()
-    # auto vouch moz.com:
-    elif any(username.endswith('@' + x) for x in settings.AUTO_VOUCH_DOMAINS):
-        registrar.record_vouch(voucher='ZUUL', vouchee=uniq_id)
 
-    # we need to authenticate them... with their assertion
-    assrtn_hsh, assertion = get_assertion(request)
-    user = auth.authenticate(request=request, assertion=assertion)
-
-    # Should never happen
-    if not user or not user.is_authenticated():
-        msg = 'Authentication for new user (%s) failed' % username
-        # TODO: make this a unique exception.
-        raise Exception(msg)
-    else:
-        log.info("Logging user in")
-        auth.login(request, user)
+    # TODO: Remove when LDAP goes away
+    auth.login(request, user)
 
     return uniq_id
 

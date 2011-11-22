@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+
+{% block page_title %}{{ _('Confirm Profile Deletion') }}{% endblock %}
 {% block body_id %}confirm-delete{% endblock %}
 {% block body_classes %}box-content{% endblock %}
 
@@ -27,11 +29,11 @@
 
     <div id="actions">
       <a href="{{ url('phonebook.edit_profile') }}"
-         class="button orange" id="cancel-action">
+         class="button primary" id="cancel-action">
         {{ _("No: don't delete my profile") }}
       </a>
 
-      <button class="button red" id="delete-action">
+      <button class="button destructive" id="delete-action">
         {{ _("I'm sure: delete my profile") }}
       </button>
     </div>

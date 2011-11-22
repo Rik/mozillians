@@ -58,19 +58,6 @@ class LarperMiddleware(object):
         return response
 
 
-def is_vouched(request):
-    user = request.user
-
-    def f():
-        if not hasattr(user, 'person'):
-            directory = UserSession.connect(request)
-            # Stale data okay
-            user.person = directory.get_by_unique_id(user.unique_id)
-        # Presence of voucher DN is enough, don't validate
-        return bool(user.person.voucher_unique_id)
-    return f
-
-
 def _populate(request):
     user = request.user
     session = request.session
@@ -82,7 +69,3 @@ def _populate(request):
     elif hasattr(user, 'ldap_user'):
         unique_id = user.ldap_user.attrs['uniqueIdentifier'][0]
         user.unique_id = session['unique_id'] = unique_id
-        log.info("Setting unique_id=%s from ldap on user" % unique_id)
-    else:
-        log.info("NOT SETTING unique_id")
-    user.is_vouched = is_vouched(request)

@@ -41,10 +41,11 @@ from ldap.modlist import addModlist, modifyModlist
 
 from django.conf import settings
 from django.core import signing
+from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import User
+from django.db.models import Q
 
 from statsd import statsd
-
 import commonware.log
 from funfactory.utils import absolutify
 
@@ -283,12 +284,11 @@ class UserSession(object):
         """
         f = "(&(objectClass=mozilliansPerson)(uniqueIdentifier=%s))"
         q = filter_format(f, (unique_id,))
-        msg = 'Unable to locate %s in the LDAP directory'
         results = self._people_search(q, use_master)
-
-        if 0 == len(results):
+        msg = 'Unable to locate %s in the LDAP directory'
+        if not results:
             raise NO_SUCH_PERSON(msg % unique_id)
-        elif 1 == len(results):
+        elif len(results) == 1:
             _dn, attrs = results[0]
             # Pending users will detect the existance of another
             # person, but there won't be any data besides uniqueIdentifier
@@ -429,25 +429,6 @@ class UserSession(object):
 
         if modlist:
             conn.modify_s(dn, modlist)
-
-    def record_vouch(self, voucher, vouchee):
-        """Updates a *Pending* account to *Mozillian* status.
-
-        voucher - The unique_id of the Mozillian who will vouch
-        vouchee - The unique_id of the Pending user who is being vouched for
-
-        TODO: I think I'm doing something dumb with encode('utf-8')
-
-        Method always uses master.
-        """
-        conn = self._ensure_conn(WRITE)
-        voucher_dn = Person.dn(voucher).encode('utf-8')
-        vouchee_dn = Person.dn(vouchee)
-
-        modlist = [(ldap.MOD_ADD, 'mozilliansVouchedBy', [voucher_dn])]
-
-        conn.modify_s(vouchee_dn, modlist)
-        return True
 
     def _people_search(self, search_filter, use_master=False):
         """Wrapper function around LDAP search.
@@ -645,8 +626,43 @@ class Person(object):
         return p
 
     def get_profile(self):
-        """Retrieve the Django UserProfile for this Person."""
-        return User.objects.get(email=self.username).get_profile()
+        """Retrieve the Django UserProfile for this Person.
+
+        This is full of hacks because all the Mozillians servers are throwing
+        ObjectDoesNotExist errors (even in production) if we try a straight-up
+        `User.objects.get(email=self.username)`. This method now exhaustively
+        tries to get a User object from the database. If it doesn't find one,
+        or finds one without a UserProfile, we make one on the spot, trying
+        our best to fill things in sanely. FML.
+
+        See: https://bugzilla.mozilla.org/show_bug.cgi?id=698699
+
+        TODO: Remove this as soon as possible. It's insane.
+        """
+        user = (User.objects.filter(Q(email=self.username) |
+                                    Q(username=self.username)))[:1]
+
+        if user:
+            # Yes, sometimes the User exists but the UserProfile doesn't.
+            # See: https://bugzilla.mozilla.org/show_bug.cgi?id=699234
+            try:
+                profile = user[0].get_profile()
+            except ObjectDoesNotExist, e:
+                statsd.incr('user.errors.profile_doesnotexist')
+                log.warning(e)
+
+                profile = UserProfile.objects.create(user=user[0])
+        else:
+            statsd.incr('user.errors.doesnotexist')
+            log.warning('No user with email %s' % self.username)
+
+            user = User(username=self.username, email=self.username)
+            user.set_unusable_password()
+            user.save()
+
+            profile = user.get_profile()
+
+        return profile
 
     def ldap_attrs(self):
         """Transforms Person object into LDAP compatible data.
@@ -976,10 +992,51 @@ def _return_all():
     conn = ldap.initialize(settings.LDAP_SYNC_PROVIDER_URI)
     conn.bind_s(settings.LDAP_ADMIN_DN, settings.LDAP_ADMIN_PASSWORD)
     encoded_q = '@'.encode('utf-8')
-
-    search_filter = filter_format("(|(mail=*%s*)(uid=*%s*))",
+    search_filter = filter_format('(|(mail=*%s*)(uid=*%s*))',
                                   (encoded_q, encoded_q,))
 
     rs = conn.search_s(settings.LDAP_USERS_GROUP, ldap.SCOPE_SUBTREE,
                        search_filter)
     return rs
+
+
+def get_user_by_email(email):
+    """Given an email address, return an ldap record."""
+
+    conn = ldap.initialize(settings.LDAP_SYNC_PROVIDER_URI)
+    conn.bind_s(settings.LDAP_ADMIN_DN, settings.LDAP_ADMIN_PASSWORD)
+    encoded_q = email.encode('utf-8')
+    search_filter = filter_format('(|(mail=*%s*)(uid=*%s*))',
+                                  (encoded_q, encoded_q,))
+    rs = conn.search_s(settings.LDAP_USERS_GROUP, ldap.SCOPE_SUBTREE,
+                       search_filter)
+    if rs:
+        return rs[0]
+
+
+def get_user_by_uid(uid):
+    """Given a uniqueIdentifier, return an ldap record."""
+    conn = ldap.initialize(settings.LDAP_SYNC_PROVIDER_URI)
+    conn.bind_s(settings.LDAP_ADMIN_DN, settings.LDAP_ADMIN_PASSWORD)
+    search_filter = filter_format('(uniqueIdentifier=%s)', (uid,))
+
+    rs = conn.search_s(settings.LDAP_USERS_GROUP, ldap.SCOPE_SUBTREE,
+                       search_filter, Person.search_attrs)
+    if rs:
+        return rs[0]
+
+
+def record_vouch(voucher, vouchee):
+    """Updates a *Pending* account to *Mozillian* status.
+
+    voucher - The unique_id of the Mozillian who will vouch
+    vouchee - The unique_id of the Pending user who is being vouched for
+    """
+    conn = ldap.initialize(settings.LDAP_SYNC_PROVIDER_URI)
+    conn.bind_s(settings.LDAP_ADMIN_DN, settings.LDAP_ADMIN_PASSWORD)
+    voucher_dn = Person.dn(voucher)
+    vouchee_dn = Person.dn(vouchee)
+
+    modlist = [(ldap.MOD_ADD, 'mozilliansVouchedBy', [voucher_dn])]
+    conn.modify_s(vouchee_dn, modlist)
+    return True

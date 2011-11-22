@@ -1,0 +1,2 @@
+path = lambda x: ''
+ROOT = '..'

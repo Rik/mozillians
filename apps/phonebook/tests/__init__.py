@@ -1,3 +1,4 @@
+import os
 import subprocess
 
 from django.contrib.auth.models import User
@@ -10,6 +11,11 @@ import test_utils
 from funfactory.urlresolvers import reverse
 from funfactory.manage import path
 
+from users import cron
+
+# The test data (below in module constants) must match data in
+# directory/testsuite/mozillians-bulk-test-data.ldif
+# You must have run x-rebuild before these tests
 MOZILLIAN = dict(email='u000001@mozillians.org', uniq_id='7f3a67u000001')
 MOZ_ASSERTION = 'abcdefghijklmnop'
 PENDING = dict(email='u000003@mozillians.org', uniq_id='7f3a67u000003')
@@ -27,7 +33,6 @@ class LDAPTestCase(test_utils.TestCase):
 
     @classmethod
     def setup_class(cls):
-        import os
         os.environ['OPENLDAP_DB_PATH'] = '/home/vagrant/openldap-db'
         call(path('directory/devslapd/bin/x-rebuild'))
 
@@ -38,6 +43,7 @@ class LDAPTestCase(test_utils.TestCase):
                                                assertion=PND_ASSERTION)
         self.mozillian_client = mozillian_client(email=MOZILLIAN['email'],
                                                  assertion=MOZ_ASSERTION)
+        cron.vouchify()
 
 
 def mozillian_client(email, assertion):
