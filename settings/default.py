@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-# jango settings for the mozillians project.
+# Django settings for the mozillians project.
 import logging
 
 from funfactory.manage import path

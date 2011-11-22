@@ -45,13 +45,15 @@ from django.core.exceptions import ObjectDoesNotExist
 from django.contrib.auth.models import User
 from django.db.models import Q
 
-from statsd import statsd
 import commonware.log
 from funfactory.utils import absolutify
+from statsd import statsd
+from users.models import UserProfile
 
 import browserid
 
 log = commonware.log.getLogger('m.larper')
+
 
 ASSERTION_SIGNED_KEY = 'ASSERTION'
 ASSERTION_KEY = 'assertion'
