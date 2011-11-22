@@ -1,10 +1,9 @@
-from django.contrib.auth.models import User
-
 import ldap
 
-from statsd import statsd
+from django.contrib.auth.models import User
 
 import commonware.log
+from statsd import statsd
 
 from larper import UserSession, store_assertion
 
@@ -26,7 +25,7 @@ class SaslBrowserIDBackend(object):
     def authenticate(self, request=None, assertion=None):
         """Authentication based on BrowserID assertion.
 
-        django.contrib.auth backend that is SASL and BrowserID
+        ``django.contrib.auth`` backend that is SASL and BrowserID
         savy. Uses session to maintain assertion over multiple
         requests.
         """
@@ -42,7 +41,6 @@ class SaslBrowserIDBackend(object):
             if registered:
                 request.session['unique_id'] = details
             else:
-                # TODO, use this on a browserid registration page
                 request.session['verified_email'] = details
         except ldap.OTHER, o:
             statsd.incr('browserid.stale_assertion_or_ldap_error')
@@ -58,16 +56,15 @@ class SaslBrowserIDBackend(object):
                 person = directory.get_by_unique_id(details)
                 user = User.objects.get(username=person.username)
             except User.DoesNotExist:
-                # TODO aok - do we want this to happen from registration only?
                 log.info("Mirroring user data into DB for metrics")
                 user = User(username=person.username,
                             first_name=person.first_name,
                             last_name=person.last_name,
-                            email=person.username)
+                            email=person.username,
+                            is_active=True,
+                            is_staff=False,
+                            is_superuser=False)
                 user.set_unusable_password()
-                user.is_active = True
-                user.is_staff = False
-                user.is_superuser = False
                 user.save()
             return user
         return None

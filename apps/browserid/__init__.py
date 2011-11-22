@@ -1,15 +1,16 @@
-from ldap.sasl import sasl, CB_USER, CB_AUTHNAME
+from ldap.sasl import Sasl, CB_USER, CB_AUTHNAME
 
 
-class Credentials(sasl):
+class Credentials(Sasl):
     """This class handles SASL BROWSER-ID authentication."""
 
     def __init__(self, assertion, audience):
-        """Credentials constructor.
+        """Prepares credentials for LDAP/sasl bind.
 
         Prepares assertion and audience to be used
-        as the CB_USER and CB_AUTHNAME fields of a
-        sasl interactive LDAP bind."""
+        as the ``CB_USER`` and ``CB_AUTHNAME`` fields of a
+        sasl interactive LDAP bind.
+        """
         auth_dict = {CB_USER: assertion,
                      CB_AUTHNAME: audience}
-        sasl.__init__(self, auth_dict, 'BROWSER-ID')
+        Sasl.__init__(self, auth_dict, 'BROWSER-ID')
