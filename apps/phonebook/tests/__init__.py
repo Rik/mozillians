@@ -1,8 +1,8 @@
 import os
 import subprocess
 
-from django.contrib.auth.models import User
 from django import test
+from django.contrib.auth.models import User
 
 from nose.tools import eq_
 

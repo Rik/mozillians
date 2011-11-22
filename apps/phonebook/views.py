@@ -58,7 +58,6 @@ def profile_uid(request, unique_id):
     except NO_SUCH_PERSON:
         log.warning('profile_uid Sending 404 for [%s]' % unique_id)
         raise Http404
-    return "huh"
 
 
 def profile_nickname(request, nickname):

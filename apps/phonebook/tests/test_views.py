@@ -1,18 +1,16 @@
 from django import test
 from django.contrib.auth.models import User
 
+from nose.tools import eq_
 from pyquery import PyQuery as pq
+import test_utils
 
 from funfactory.urlresolvers import set_url_prefix, reverse
 from funfactory.manage import path
-import test_utils
-
-from nose.tools import eq_
 
 from phonebook.tests import LDAPTestCase, AMANDA_NAME, AMANDEEP_NAME,\
     AMANDEEP_VOUCHER, MOZILLIAN, MOZ_ASSERTION, OTHER_MOZILLIAN, PENDING,\
     PND_ASSERTION, mozillian_client, call
-
 from phonebook.views import UNAUTHORIZED_DELETE
 
 

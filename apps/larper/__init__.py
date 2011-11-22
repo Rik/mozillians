@@ -118,7 +118,6 @@ class UserSession(object):
     to see certain people.
     """
     def __init__(self, request):
-        """UserSession constructor."""
         self.request = request
         self._is_bound = False
 
@@ -192,7 +191,7 @@ class UserSession(object):
         return self.request.larper_conns[mode][dn]
 
     def _sasl_bind(self, assertion):
-        """SASL Credentials wrapper function."""
+        """Binds to LDAP using sasl and BrowserID credentials."""
         audience = absolutify('')
         sasl_creds = browserid.Credentials(assertion, audience)
         self.conn.sasl_interactive_bind_s("", sasl_creds)
@@ -231,8 +230,8 @@ class UserSession(object):
 
         * boolean - True if the user is registered, False if they are
                     new.
-        * string - unique_id if they are registered, verified
-                      email address if they are new.
+        * string -  unique_id if they are registered, verified
+                    email address if they are new.
         """
         conn = self._ensure_conn(READ)
         dn = conn.whoami_s()
@@ -241,7 +240,10 @@ class UserSession(object):
             return (True, m.group(1))
         else:
             m = NEW_USER.match(dn)
-            return (False, m.group(1) if m else "unknown")
+            if m:
+                return (False, m.group(1))
+            else:
+                raise INCONCEIVABLE('LDAP authz error for dn=[%s]' % dn)
 
     def search(self, query):
         """General purpose 'quick' search.
@@ -585,8 +587,6 @@ class Person(object):
                  full_name=None,
                  biography=None,
                  voucher_unique_id=None):
-        """Constructor for Person objects."""
-
         self.unique_id = unique_id
         self.username = username
 
@@ -774,7 +774,6 @@ class SystemId(object):
                     'mozilliansServiceID']
 
     def __init__(self, person_unique_id, unique_id, service_uri, service_id):
-        """Constructor for SystemId objects."""
         self.person_unique_id = person_unique_id
         self.unique_id = unique_id
         self.service_uri = service_uri
@@ -844,10 +843,6 @@ class RegistrarSession(UserSession):
     """
     A directory session for the registrar user.
     """
-    def __init__(self, request):
-        """Constructor for RegistrarSession objects."""
-        UserSession.__init__(self, request)
-
     def _ensure_conn(self, mode):
         """Overrides UserSession._ensure_conn to use dn pass.
 
@@ -893,9 +888,6 @@ class RegistrarSession(UserSession):
 
 class AdminSession(UserSession):
     """A directory session for the admin user."""
-    def __init__(self, request):
-        """Constructor for AdminSession objects."""
-        UserSession.__init__(self, request)
 
     def _ensure_conn(self, mode):
         """Overrides UserSession._ensure_conn to use dn and pass.

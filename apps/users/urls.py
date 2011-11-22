@@ -18,6 +18,5 @@ urlpatterns = patterns('',
     url(r'^password_reset_confirm/'
          '(?P<uidb36>[0-9A-Za-z]{1,13})-(?P<token>[0-9A-Za-z]{1,13}-'
          '[0-9A-Za-z]{1,20})/$',
-        redirect_to, dict(url='/',
-        name='password_reset_confirm')),
+        redirect_to, dict(url='/', name='password_reset_confirm')),
 )

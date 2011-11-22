@@ -1,7 +1,7 @@
 import datetime
 import ldap
 
-from django.contrib import auth
+from django.contrib import auth, messages
 from django.contrib.auth import views as auth_views
 from django.shortcuts import redirect, render
 
@@ -80,6 +80,7 @@ def register(request):
         if form.is_valid():
             try:
                 uniq_id = _save_new_user(request, form)
+                messages.info(request, _(u'Your account has been created.'))
                 return redirect('profile', uniq_id)
             except ldap.CONSTRAINT_VIOLATION:
                 log.error("User already exists")
@@ -91,7 +92,7 @@ def register(request):
 
     return render(request, 'phonebook/edit_profile.html',
                   dict(form=form,
-                       edit_form_action=reverse('register'),
+                       edit_form_action=url(),
                        person=anonymous,
                        mode='new',
                        email=email,
@@ -135,7 +136,7 @@ def _save_new_user(request, form):
             log.warning(msg)
 
     # we need to authenticate them... with their assertion
-    assrtn_hsh, assertion = get_assertion(request)
+    _, assertion = get_assertion(request)
 
     for i in range(1, 10):
         try:

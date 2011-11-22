@@ -63,8 +63,8 @@ def _populate(request):
     session = request.session
 
     if 'unique_id' in session:
-        log.info("Setting unique_id=%s from session on user" % \
-                     session['unique_id'])
+        log.info("Setting unique_id=%s from session on user" %
+                 session['unique_id'])
         user.unique_id = session['unique_id']
     elif hasattr(user, 'ldap_user'):
         unique_id = user.ldap_user.attrs['uniqueIdentifier'][0]

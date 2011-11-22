@@ -34,10 +34,9 @@ class SaslBrowserIDBackend(object):
         store_assertion(request, assertion)
 
         directory = UserSession(request)
-        login_valid = False
+        registered = False
         try:
             (registered, details) = directory.registered_user()
-            login_valid = registered
             if registered:
                 request.session['unique_id'] = details
             else:
@@ -51,7 +50,7 @@ class SaslBrowserIDBackend(object):
             log.error("Unknown error, clearing session assertion [%s]", e)
             store_assertion(request, None)
 
-        if login_valid:
+        if registered:
             try:
                 person = directory.get_by_unique_id(details)
                 user = User.objects.get(username=person.username)
