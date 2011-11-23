@@ -92,7 +92,7 @@ def register(request):
 
     return render(request, 'phonebook/edit_profile.html',
                   dict(form=form,
-                       edit_form_action=url(),
+                       edit_form_action=reverse('phonebook.edit_profile'),
                        person=anonymous,
                        mode='new',
                        email=email,
