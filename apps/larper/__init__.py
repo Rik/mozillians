@@ -60,7 +60,7 @@ ASSERTION_KEY = 'assertion'
 
 
 def get_assertion(request):
-    """ Not sure if this and store_assertion belong here..."""
+    """Retrieves the assertion from the user's session."""
     d = request.session.get(ASSERTION_SIGNED_KEY)
     if d:
         assertion = signing.loads(d).get(ASSERTION_KEY)
@@ -147,8 +147,8 @@ class UserSession(object):
         """
         assrtn_hsh, assertion = get_assertion(self.request)
         if not assertion:
-            raise Exception("Programming error, do not use UserSession "
-                            "without an assertion")
+            raise Exception('Programming error, do not use UserSession '
+                            'without an assertion')
 
         if not hasattr(self.request, CONNECTIONS_KEY):
             self.request.larper_conns = [{}, {}]
@@ -196,7 +196,7 @@ class UserSession(object):
         """Binds to LDAP using sasl and BrowserID credentials."""
         audience = absolutify('')
         sasl_creds = browserid.Credentials(assertion, audience)
-        self.conn.sasl_interactive_bind_s("", sasl_creds)
+        self.conn.sasl_interactive_bind_s('', sasl_creds)
 
     def _dn(self, assertion):
         """Convience wrapper for checking dn after sasl bind."""
@@ -208,7 +208,7 @@ class UserSession(object):
         if m:
             dn = Person.dn(m.group(1))
             statsd.incr('larper.existing_email_address')
-            log.info("New DN=%s" % dn)
+            log.info('New DN=%s' % dn)
         else:
             statsd.incr('larper.unknown_email_address')
             log.info("Unknown email address %s" % new_dn)
