@@ -90,6 +90,17 @@
           <div class="clear"></div>
 
         </div>
+
+        {% if photo %}
+          <div id="photo-delete-container" class="field">
+            {{ form['photo_delete'].label_tag() }}
+
+            {{ form.errors['photo_delete'] }}
+            {{ form['photo_delete'] }}
+
+            <div class="clear"></div>
+          </div>
+        {% endif %}
       </div>
 
       <div class="right-col">

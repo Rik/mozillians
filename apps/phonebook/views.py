@@ -156,6 +156,7 @@ def _edit_profile(request, new_account):
              person=person,
              registration_flow=new_account,
              user_groups=user_groups,
+             photo=ldap.profile_photo(unique_id, use_master=True),
             )
     return render(request, 'phonebook/edit_profile.html', d)
 
@@ -300,14 +301,10 @@ def invite(request):
                 log.info('profile_uid Sending 404 for [%s]' % unique_id)
                 raise Http404
 
-            sender = '"%s %s" <%s>' % (person.first_name,
-                                       person.last_name,
-                                       request.user.username)
-
             invite = f.save(commit=False)
             invite.inviter = request.user.unique_id
             invite.save()
-            invite.send(sender=sender)
+            invite.send(sender=person)
 
             return HttpResponseRedirect(reverse(invited, args=[invite.id]))
     else:
