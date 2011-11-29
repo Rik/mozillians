@@ -211,7 +211,7 @@ class UserSession(object):
             log.info('New DN=%s' % dn)
         else:
             statsd.incr('larper.unknown_email_address')
-            log.info("Unknown email address %s" % new_dn)
+            log.info('Unknown email address %s' % new_dn)
         return dn
 
     def dn_pass(self):
@@ -222,8 +222,8 @@ class UserSession(object):
         Subclasses of UserSession should override this method
         if they don't auth against the user in the session.
         """
-        raise Exception("UserSession should be used with an assertion, "
-                        "not dn/password")
+        raise Exception('UserSession should be used with an assertion, '
+                        'not dn/password')
 
     def registered_user(self):
         """Checks if the current user is registered in the system.

@@ -151,8 +151,8 @@ SOUTH_TESTS_MIGRATE = False
 CSP_IMG_SRC = ("'self'", 'http://statse.webtrendslive.com',
                'https://statse.webtrendslive.com',)
 CSP_SCRIPT_SRC = ("'self'", 'http://statse.webtrendslive.com',
-                  'https://statse.webtrendslive.com',)
-CSP_SCRIPT_SRC = ("'self'", 'http://browserid.org/include.js',
-                  'https://browserid.org/include.js',)
+                  'https://statse.webtrendslive.com',
+                  'http://browserid.org',
+                  'https://browserid.org',)
 CSP_REPORT_ONLY = True
 CSP_REPORT_URI = '/csp/report'
