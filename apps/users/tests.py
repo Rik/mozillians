@@ -42,8 +42,8 @@ class TestThingsForPeople(LDAPTestCase):
         """Ensure only anonymous users can register an account."""
         r = self.client.get(reverse('home'))
         self.assertTrue(200 == r.status_code,
-                        "Anonymous users can access the homepage to "
-                        "begin registration flow")
+                        'Anonymous users can access the homepage to '
+                        'begin registration flow')
 
         r = self.mozillian_client.get(reverse('register'))
         eq_(302, r.status_code,
@@ -106,7 +106,7 @@ class VouchTest(LDAPTestCase):
                 'User should not appear as having a pending profile.')
         assert not doc('#pending-approval'), (
                 'Pending profile div should not be in DOM.')
-        
+
         # Make sure the user appears vouched in search results
         r = self.mozillian_client.get(reverse('phonebook.search'),
                                       {'q': PENDING['email']})

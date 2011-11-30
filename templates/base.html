@@ -62,7 +62,7 @@
             <form id="browserid" action="{{ url('browserid_login') }}" method="POST">
               {{ csrf() }}
               {{ browserid_form }}
-              <input id="bid_mode" type="hidden" name="mode" value="" >
+              <input id="bid_mode" type="hidden" name="mode" value="">
             </form>
           </li>
           <li id="browserid-register"><span>{{ _('Join Us') }}</span></li>

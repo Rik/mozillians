@@ -4,8 +4,8 @@ from funfactory.urlresolvers import reverse
 from nose.tools import eq_
 from pyquery import PyQuery as pq
 
-from phonebook.tests import MOZILLIAN, MOZ_ASSERTION, PENDING, PND_ASSERTION
-from phonebook.tests import LDAPTestCase, mozillian_client
+from phonebook.tests import (MOZILLIAN, MOZ_ASSERTION, PENDING, PND_ASSERTION,
+                             LDAPTestCase, mozillian_client)
 from groups.helpers import stringify_groups
 from groups.models import Group
 from users.tests import get_profile
@@ -154,7 +154,7 @@ class GroupTest(LDAPTestCase):
         toggle view and that the buttons don't appear there."""
         profile = get_profile(MOZILLIAN['email'])
 
-        client = mozillian_client(MOZILLIAN['email'])
+        client = mozillian_client(MOZILLIAN['email'], MOZ_ASSERTION)
         response = client.get(reverse('group', args=[NORMAL_GROUP.id,
                                                      NORMAL_GROUP.url]))
         doc = pq(response.content)
@@ -172,7 +172,7 @@ class GroupTest(LDAPTestCase):
                 '"Leave Group" button should be present in the response.')
         assert profile.groups.get(id=NORMAL_GROUP.id), (
                 'User should be part of the "%s" group' % NORMAL_GROUP.name)
-        
+
         # Do it again and they should leave the group.
         r = client.post(doc('#toggle-group').attr('action'), {}, follow=True)
         assert not profile.groups.filter(id=NORMAL_GROUP.id), (

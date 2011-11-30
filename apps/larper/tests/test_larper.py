@@ -110,8 +110,7 @@ class TestLarper(LDAPTestCase):
         request = _mock_request('/en-US/search?q=David',
                                 username=username,
                                 unique_id='7f3a67u000098',
-                                assertion='somelongstring',
-                                )
+                                assertion='somelongstring',)
 
         directory = self.d = UserSession.connect(request)
 

@@ -101,8 +101,8 @@ KNOWN_SERVICE_URIS = [
     MOZILLA_IRC_SERVICE_URI,
 ]
 
-_r = 'dn:uniqueIdentifier=([^,]*),ou=people,dc=mozillians,dc=org'
-KNOWN_USER = re.compile(_r)
+KNOWN_USER = re.compile(
+    'dn:uniqueIdentifier=([^,]*),ou=people,dc=mozillians,dc=org')
 NEW_USER = re.compile('dn:uid=([^,]*),cn=browser-id,cn=auth')
 PEEP_SRCH_FLTR = '(&(objectClass=mozilliansPerson)(|(cn=*%s*)(mail=*%s*)))'
 IRC_SRCH_FLTR = """(&(objectClass=mozilliansLink)(mozilliansServiceID=*%s*)
@@ -204,9 +204,9 @@ class UserSession(object):
         new_dn = self.conn.whoami_s()
         # this could be an invalid dn if the user isn't registered
         # it would look like uid=shout@ozten.com,cn=browser-id,cn=auth
-        m = KNOWN_USER.match(new_dn)
-        if m:
-            dn = Person.dn(m.group(1))
+        match = KNOWN_USER.match(new_dn)
+        if match:
+            dn = Person.dn(match.group(1))
             statsd.incr('larper.existing_email_address')
             log.info('New DN=%s' % dn)
         else:
@@ -237,13 +237,13 @@ class UserSession(object):
         """
         conn = self._ensure_conn(READ)
         dn = conn.whoami_s()
-        m = KNOWN_USER.match(dn)
-        if m:
-            return (True, m.group(1))
+        match = KNOWN_USER.match(dn)
+        if match:
+            return (True, match.group(1))
         else:
-            m = NEW_USER.match(dn)
-            if m:
-                return (False, m.group(1))
+            match = NEW_USER.match(dn)
+            if match:
+                return (False, match.group(1))
             else:
                 raise INCONCEIVABLE('LDAP authz error for dn=[%s]' % dn)
 
@@ -302,6 +302,7 @@ class UserSession(object):
                 return Person.new_from_directory(attrs)
         else:
             msg = 'Multiple people found for %s. This should never happen.'
+            statsd.incr('larper.errors.get_by_unique_id_has_multiple')
             raise INCONCEIVABLE(msg % unique_id)
 
     def profile_photo(self, unique_id, use_master=False):
@@ -523,9 +524,9 @@ class UserSession(object):
                 people.append(p)
         return people
 
-    def __str__(self):
+    def __unicode__(self):
         """Provides a string representation for this object."""
-        return "<larper.UserSession for %s>" % self.request.user.username
+        return u'<larper.UserSession for %s>' % self.request.user.username
 
     @staticmethod
     def connect(request):
@@ -609,7 +610,7 @@ class Person(object):
         self.biography = biography
         self.voucher_unique_id = voucher_unique_id
 
-    def __str__(self):
+    def __unicode__(self):
         """Provides a string representation for this object."""
         return u'%s %s' % (self.first_name, self.last_name)
 
@@ -906,7 +907,7 @@ class AdminSession(UserSession):
 
         Admin session uses a configurable dn and password
         instead of a BrowserID assertion.
-         """
+        """
         return self._ensure_conn_simple(mode)
 
     def dn_pass(self):

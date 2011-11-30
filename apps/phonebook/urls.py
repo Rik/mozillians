@@ -32,8 +32,7 @@ urlpatterns = patterns('',
 
     # Static pages
     url('^$', anonymous_csrf(direct_to_template),
-        {'template': 'phonebook/home.html'},
-        name='home'),
+        {'template': 'phonebook/home.html'}, name='home'),
     url('^about$', direct_to_template, {'template': 'phonebook/about.html'},
         name='about'),
     url('^confirm-register$', direct_to_template,

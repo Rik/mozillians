@@ -35,8 +35,8 @@ TEMPLATE_DIRS = base.TEMPLATE_DIRS + (path('apps/users/templates'), )
 # List of callables that know how to import templates from various sources.
 TEMPLATE_LOADERS = ('jingo.Loader',) + base.TEMPLATE_LOADERS
 
-TEMPLATE_CONTEXT_PROCESSORS = base.TEMPLATE_CONTEXT_PROCESSORS +\
-    ('django_browserid.context_processors.browserid_form',)
+TEMPLATE_CONTEXT_PROCESSORS = (base.TEMPLATE_CONTEXT_PROCESSORS +
+    ('django_browserid.context_processors.browserid_form',))
 
 
 JINGO_EXCLUDE_APPS = [
@@ -93,7 +93,7 @@ INSTALLED_APPS = list(base.INSTALLED_APPS) + [
     'browserid',
 
     'csp',
-    'django_browserid',  # We use forms, etc but not the auth backend
+    'django_browserid',  # We use forms, etc. but not the auth backend
     'jingo_minify',
     'tower',
     'cronjobs',

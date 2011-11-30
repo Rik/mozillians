@@ -1,4 +1,4 @@
-from ldap.sasl import CB_USER, CB_AUTHNAME, sasl as Sasl
+from ldap.sasl import CB_AUTHNAME, CB_USER, sasl as Sasl
 
 
 class Credentials(Sasl):

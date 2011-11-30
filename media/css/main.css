@@ -471,7 +471,6 @@ em.underline {
 }
 
 #body-edit-profile #optin-container label {
-    width: 44%;
     float: left;
     width: 275px;
 }
@@ -794,19 +793,55 @@ html[dir='rtl'] #body-group-show #toggle-group {
 
 /* TODO: I need other vendor prefixed gradients */
 #body-home #create_profile {
-    background: -moz-linear-gradient(center top , #B1DAFA, #3AA8FF) repeat scroll 0 0 transparent;
+    background-image: linear-gradient(top, rgb(177,219,250) 45%, rgb(58,170,255) 73%);
+    background-image: -o-linear-gradient(top, rgb(177,219,250) 45%, rgb(58,170,255) 73%);
+    background-image: -moz-linear-gradient(top, rgb(177,219,250) 45%, rgb(58,170,255) 73%);
+    background-image: -webkit-linear-gradient(top, rgb(177,219,250) 45%, rgb(58,170,255) 73%);
+    background-image: -ms-linear-gradient(top, rgb(177,219,250) 45%, rgb(58,170,255) 73%);
+
+    background-image: -webkit-gradient(
+	linear,
+	left top,
+	left bottom,
+	color-stop(0.45, rgb(177,219,250)),
+	color-stop(0.73, rgb(58,170,255))
+    );
     border: 1px solid #3697E5;
     border-radius: 1px;
     white-space: nowrap;
 }
 
 #body-home #create_profile:hover {
-    background: -moz-linear-gradient(center top , #B1DAFA, #59B4FE) repeat scroll 0 0 transparent;
+    background-image: linear-gradient(top, rgb(177,219,250) 45%, rgb(89,180,254) 73%);
+    background-image: -o-linear-gradient(top, rgb(177,219,250) 45%, rgb(89,180,254) 73%);
+    background-image: -moz-linear-gradient(top, rgb(177,219,250) 45%, rgb(89,180,254) 73%);
+    background-image: -webkit-linear-gradient(top, rgb(177,219,250) 45%, rgb(89,180,254) 73%);
+    background-image: -ms-linear-gradient(top, rgb(177,219,250) 45%, rgb(89,180,254) 73%);
+
+    background-image: -webkit-gradient(
+	linear,
+	left top,
+	left bottom,
+	color-stop(0.45, rgb(177,219,250)),
+	color-stop(0.73, rgb(89,180,254))
+    );
     border: 1px solid #3697E5;
 }
 
 #body-home #create_profile:active {
-    background: -moz-linear-gradient(center top , #8DCAFC, #3AA8FF) repeat scroll 0 0 transparent;
+    background-image: linear-gradient(top, rgb(141,202,252) 45%, rgb(58,170,255) 73%);
+    background-image: -o-linear-gradient(top, rgb(141,202,252) 45%, rgb(58,170,255) 73%);
+    background-image: -moz-linear-gradient(top, rgb(141,202,252) 45%, rgb(58,170,255) 73%);
+    background-image: -webkit-linear-gradient(top, rgb(141,202,252) 45%, rgb(58,170,255) 73%);
+    background-image: -ms-linear-gradient(top, rgb(141,202,252) 45%, rgb(58,170,255) 73%);
+
+    background-image: -webkit-gradient(
+	linear,
+	left top,
+	left bottom,
+	color-stop(0.45, rgb(141,202,252)),
+	color-stop(0.73, rgb(58,170,255))
+    );
     border: 1px solid #3697E5;
 }
 

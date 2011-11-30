@@ -51,24 +51,21 @@ class SaslBrowserIDBackend(object):
             store_assertion(request, None)
 
         if registered:
-            try:
-                person = directory.get_by_unique_id(details)
-                user = User.objects.get(username=person.username)
-            except User.DoesNotExist:
-                log.info("Mirroring user data into DB for metrics")
-                user = User(username=person.username,
+            person = directory.get_by_unique_id(details)
+            defaults = dict(username=person.username,
                             first_name=person.first_name,
                             last_name=person.last_name,
-                            email=person.username,
-                            is_active=True,
-                            is_staff=False,
-                            is_superuser=False)
+                            email=person.username)
+            user, created = User.objects.get_or_create(username=person.username,
+                                                       defaults=defaults)
+            if created:
                 user.set_unusable_password()
                 user.save()
             return user
         return None
 
     def get_user(self, user_id):
+        """Django auth callback for loading a user."""
         try:
             return User.objects.get(pk=user_id)
         except User.DoesNotExist:

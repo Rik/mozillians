@@ -14,18 +14,11 @@ from larper import RegistrarSession, get_assertion
 from phonebook.models import Invite
 from session_csrf import anonymous_csrf
 from users import forms
-from users.models import UserProfile
+from users.models import Anonymous, UserProfile
 
 log = commonware.log.getLogger('m.users')
 
 get_invite = lambda c: Invite.objects.get(code=c, redeemed=None)
-
-
-class Anonymous:
-    """Anonymous user provides minimum data for views and templates."""
-    def __init__(self):
-        """Constructor always returns 0 for unique_id."""
-        self.unique_id = 0
 
 
 def logout(request, **kwargs):
@@ -47,7 +40,6 @@ def register(request):
     """
     # Legacy URL shenanigans - A GET to register with invite code
     # is a legal way to start the BrowserID registration flow.
-
     if 'code' in request.GET:
         request.session['invite-code'] = request.GET['code']
         return redirect('home')
@@ -118,9 +110,7 @@ def _save_new_user(request, form):
 
     registrar = RegistrarSession.connect(request)
 
-    code = None
-    if 'invite-code' in request.session:
-        code = request.session['invite-code']
+    code = request.session.get('invite-code')
 
     d = form.cleaned_data
     d['email'] = email
@@ -136,7 +126,7 @@ def _save_new_user(request, form):
             log.warning(msg)
 
     # we need to authenticate them... with their assertion
-    _, assertion = get_assertion(request)
+    assertion_hash, assertion = get_assertion(request)
 
     for i in range(1, 10):
         try:

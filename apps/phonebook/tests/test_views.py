@@ -2,7 +2,6 @@ import os
 
 from django import test
 from django.contrib.auth.models import User
-from django.core.files import File
 
 from nose.tools import eq_
 from pyquery import PyQuery as pq
@@ -11,9 +10,10 @@ import test_utils
 from funfactory.urlresolvers import set_url_prefix, reverse
 from funfactory.manage import path
 
-from phonebook.tests import LDAPTestCase, AMANDA_NAME, AMANDEEP_NAME,\
-    AMANDEEP_VOUCHER, MOZILLIAN, MOZ_ASSERTION, OTHER_MOZILLIAN, PENDING,\
-    PND_ASSERTION, mozillian_client, call
+from phonebook.tests import (AMANDA_NAME, AMANDEEP_NAME, AMANDEEP_VOUCHER,
+                             MOZILLIAN, MOZ_ASSERTION, OTHER_MOZILLIAN,
+                             PENDING, PND_ASSERTION, LDAPTestCase,
+                             mozillian_client, call)
 from phonebook.views import UNAUTHORIZED_DELETE
 
 
@@ -158,7 +158,7 @@ class TestViews(LDAPTestCase):
         peeps = r.context['people']
         self.assertEqual(len(peeps), 2)
 
-        r = self.mozillian_client.get(url, dict(q='Amand', page='test', 
+        r = self.mozillian_client.get(url, dict(q='Amand', page='test',
                                                 limit='1'))
         peeps = r.context['people']
         self.assertEqual(len(peeps), 1)

@@ -11,17 +11,14 @@ from larper import UserSession
 
 log = commonware.log.getLogger('m.browserid')
 
-log.info("Setting up handle_login")
 
-
+@receiver(user_logged_in)
 def handle_login(sender, **kwargs):
     request = kwargs['request']
     if 'unique_id' in request.session:
-        log.info("Setting unique_id=%s from session on user" %
+        log.info('Setting unique_id=%s from session on user' %
                  request.session['unique_id'])
         request.user.unique_id = request.session['unique_id']
-
-user_logged_in.connect(handle_login)
 
 
 @receiver(pre_save, sender=User)
@@ -51,7 +48,7 @@ class LarperMiddleware(object):
         if request.user.is_authenticated():
             _populate(request)
         else:
-            log.debug("User is not authenticated!")
+            log.debug('User is not authenticated!')
 
     def process_response(self, request, response):
         UserSession.disconnect(request)
@@ -63,7 +60,7 @@ def _populate(request):
     session = request.session
 
     if 'unique_id' in session:
-        log.info("Setting unique_id=%s from session on user" %
+        log.info('Setting unique_id=%s from session on user' %
                  session['unique_id'])
         user.unique_id = session['unique_id']
     elif hasattr(user, 'ldap_user'):

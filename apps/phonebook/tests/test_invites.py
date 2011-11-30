@@ -29,9 +29,10 @@ class InviteTest(LDAPTestCase):
 
         i = Invite.objects.get()
         invite_url = i.get_url()
-
-        assert ('"Bridget Hill" <u000001@mozillians.org>' in
+        assert ('no-reply@mozillians.org' in
                 mail.outbox[0].from_email)
+        assert ('Bridget Hill (u000001@mozillians.org)' in
+                mail.outbox[0].body)
         assert invite_url in mail.outbox[0].body, "No link in email."
         return i
 
@@ -93,12 +94,12 @@ class InviteTest(LDAPTestCase):
         eq_(r.context['user'].unique_id,
             Invite.objects.get(pk=invite.pk).redeemer)
 
-        eq_(r.context['user'].is_vouched(), True)
+        eq_(r.context['user'].get_profile().is_vouched, True)
 
         # Don't reuse codes.
         r = self.redeem_invite(invite, assertion='mr2reallylongstring',
                                email='mr2@gmail.com')
-        eq_(r.context['user'].is_vouched(), False)
+        eq_(r.context['user'].get_profile().is_vouched, False)
 
     def test_unvouched_cant_invite(self):
         """
