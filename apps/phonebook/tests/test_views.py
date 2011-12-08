@@ -118,12 +118,17 @@ class TestViews(LDAPTestCase):
         url = reverse('phonebook.search')
         r = self.mozillian_client.get(url, dict(q='Am'))
         rs = self.mozillian_client.get(url, dict(q=' Am'))
+        rnv = self.mozillian_client.get(url, dict(q='Am', nonvouched_only=1))
         peeps = r.context['people']
         peeps_ws = rs.context['people']
+        peeps_nv = rnv.context['people']
         saw_amandeep = saw_amanda = False
 
         for person in peeps:
             if person.full_name == AMANDEEP_NAME:
+                # we add the vouched user into a group and make
+                # sure a nonvouch search doesn't return them
+                person.get_profile().groups.create(name='IAMVOUCHED')
                 eq_(AMANDEEP_VOUCHER, person.voucher_unique_id,
                     'Amandeep is a Mozillian')
                 saw_amandeep = True
@@ -134,6 +139,7 @@ class TestViews(LDAPTestCase):
             if saw_amandeep and saw_amanda:
                 break
         self.assertEqual(peeps[0].full_name, peeps_ws[0].full_name)
+        self.assertEqual(peeps_nv[0].full_name, AMANDA_NAME)
         self.assertTrue(saw_amandeep, 'We see Mozillians')
         self.assertTrue(saw_amanda, 'We see Pending')
 
@@ -323,6 +329,27 @@ class TestViews(LDAPTestCase):
                 'Profile image URL should redirect to "unknown" image.'))
         assert not doc('#id_photo_delete'), (
                 '"Remove Profile Photo" control should not appear.')
+
+    def test_has_website(self):
+        """Verify a user's website appears in their profile (as a link)."""
+        client = self.mozillian_client
+
+        # No website URL is present.
+        r = client.get(reverse('phonebook.edit_profile'))
+        doc = pq(r.content)
+
+        assert not doc('#dd.website'), (
+                "No website info appears on the user's profile.")
+        
+        # Add a URL sans protocol.
+        r = client.post(reverse('phonebook.edit_profile'),
+                        dict(last_name='foo', website='tofumatt.com'))
+        eq_(r.status_code, 302, 'Submission works and user is redirected.')
+        r = client.get(reverse('profile', args=[MOZILLIAN['uniq_id']]))
+        doc = pq(r.content)
+
+        eq_(doc('dd.website a').attr('href'), 'http://tofumatt.com/', (
+                'User should have a URL with protocol added.'))
 
     def test_my_profile(self):
         """Are we cachebusting our picture?"""

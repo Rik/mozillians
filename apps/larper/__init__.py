@@ -107,6 +107,12 @@ NEW_USER = re.compile('dn:uid=([^,]*),cn=browser-id,cn=auth')
 PEEP_SRCH_FLTR = '(&(objectClass=mozilliansPerson)(|(cn=*%s*)(mail=*%s*)))'
 IRC_SRCH_FLTR = """(&(objectClass=mozilliansLink)(mozilliansServiceID=*%s*)
                      (mozilliansServiceURI=irc://irc.mozilla.org/))"""
+NONVOUCHED_SRCH_FLTR = """(&(objectClass=mozilliansPerson)(|(cn=*%s*)
+                            (mail=*%s*))(&(!(mail=*@mozilla*))
+                            (!(mozilliansVouchedBy=*))))"""
+NONVOUCHED_EMAIL_SRCH_FLTR = """(&(|(mail=*%s*)(uid=*%s*))
+                                    (&(!(mail=*@mozilla*))
+                                    (!(mozilliansVouchedBy=*))))"""
 
 
 class UserSession(object):
@@ -247,13 +253,16 @@ class UserSession(object):
             else:
                 raise INCONCEIVABLE('LDAP authz error for dn=[%s]' % dn)
 
-    def search(self, query):
-        """General purpose 'quick' search.
-
-        Returns a list of larper.Person objects.
+    def search(self, query, nonvouched_only=False):
+        """
+        General purpose 'quick' search. Returns a list of
+        larper.Person objects.
         """
         encoded_q = query.encode('utf-8')
-        peep_esc_q = filter_format(PEEP_SRCH_FLTR, (encoded_q, encoded_q))
+        if nonvouched_only:
+            peep_esc_q = filter_format(NONVOUCHED_SRCH_FLTR, (encoded_q, encoded_q))
+        else:
+            peep_esc_q = filter_format(PEEP_SRCH_FLTR, (encoded_q, encoded_q))
         irc_esc_q = filter_format(IRC_SRCH_FLTR, (encoded_q,))
         people = self._people_search(peep_esc_q)
         irc_nicks = self._irc_search(irc_esc_q)
@@ -268,14 +277,18 @@ class UserSession(object):
         q = filter_format("(cn=*%s*)", (query.encode('utf-8'),))
         return self._populate_people_results(self._people_search(q))
 
-    def search_by_email(self, query):
-        """Searches against the email fields for people.
-
-        Returns same type of data as search.
+    def search_by_email(self, query, nonvouched_only=False):
+        """
+        Searches against the email fields for people. Returns
+        same type of data as search.
         """
         encoded_q = query.encode('utf-8')
-        q = filter_format("(|(mail=*%s*)(uid=*%s*))",
-                          (encoded_q, encoded_q,))
+        if nonvouched_only:
+            q = filter_format(NONVOUCHED_EMAIL_SRCH_FLTR,
+                              (encoded_q, encoded_q,))
+        else:
+            q = filter_format("(|(mail=*%s*)(uid=*%s*))",
+                              (encoded_q, encoded_q,))
         return self._populate_people_results(self._people_search(q))
 
     def get_by_unique_id(self, unique_id, use_master=False):
