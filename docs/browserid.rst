@@ -225,6 +225,28 @@ I've checked and uid=foo@example.com exists, what gives?
 Solution:
 Are you missing authz-regexp config in slapd.conf or is it incorrect?
 
+Problem:
+Login hangs for a long time and then the homepage reloads.
+
+Solution:
+Your vagrant VM isn't able to reach the internet.
+If you tail /var/log/auth.log you might see
+
+    Dec  6 17:10:06 lucid32 browserid-server: curl_easy_perform failed [6] Couldn't resolve host name
+    Dec  6 17:10:06 lucid32 browserid-server: No dice, STATUS=[curl-error] REASON=[Couldn't resolve host name]
+    Dec  6 17:10:06 lucid32 browserid-server: SASL [conn=1032] Failure: Couldn't resolve host name
+    Dec  6 17:10:06 lucid32 browserid-server: conn=1032 op=0 RESULT tag=97 err=49 text=SASL(-13): authentication failure: Couldn't resolve host name
+
+Another test is 
+
+    curl https://browserid.org/
+
+To fix:
+
+    sudo /etc/init.d/networking restart
+
+
+
 Unit Tests
 ''''''''''
 

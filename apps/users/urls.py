@@ -12,7 +12,7 @@ auth_views.render_to_response = jinja_for_django
 
 urlpatterns = patterns('',
     url(r'^logout$', views.logout, name='logout'),
-
+    url(r'^confirm$', redirect_to, dict(dict(url='/', name='home'))),
     url(r'^register$', views.register, name='register'),
     # TODO: remove in 1.4 release, legacy url sent in emails
     url(r'^password_reset_confirm/'

@@ -48,7 +48,7 @@ def register(request):
         return redirect(reverse('profile', args=[request.user.unique_id]))
 
     if not 'verified_email' in request.session:
-        log.error("Browserid registration, but no verified email in session")
+        log.error('Browserid registration, but no verified email in session')
         return redirect('home')
 
     email = request.session['verified_email']
@@ -84,7 +84,7 @@ def register(request):
 
     return render(request, 'phonebook/edit_profile.html',
                   dict(form=form,
-                       edit_form_action=reverse('phonebook.edit_profile'),
+                       edit_form_action=reverse('register'),
                        person=anonymous,
                        mode='new',
                        email=email,

@@ -16,14 +16,15 @@ import commonware.log
 from funfactory.urlresolvers import reverse
 from tower import ugettext as _
 
-from browserid.decorators import browserid_login_required
+from browserid.decorators import login_required
 from groups.models import Group
 from groups.helpers import stringify_groups, users_from_groups
 from larper import UserSession, AdminSession, NO_SUCH_PERSON
 from larper import MOZILLA_IRC_SERVICE_URI
 from phonebook import forms
 from phonebook.models import Invite
-from users.models import UserProfile
+from session_csrf import anonymous_csrf
+from users.models import Anonymous, UserProfile
 
 log = commonware.log.getLogger('m.phonebook')
 
@@ -32,7 +33,7 @@ BAD_VOUCHER = 'Unknown Voucher'
 
 def vouch_required(f):
     """If a user is not vouched they get a 403."""
-    @browserid_login_required
+    @login_required
     @wraps(f)
     def wrapped(request, *args, **kwargs):
         if request.user.get_profile().is_vouched:
@@ -45,7 +46,7 @@ def vouch_required(f):
 
 
 @never_cache
-@browserid_login_required
+@login_required
 def profile_uid(request, unique_id):
     """View a profile by unique_id, which is a stable, random user id."""
     needs_master = (request.user.unique_id == unique_id)
@@ -97,14 +98,14 @@ def _profile(request, person, use_master):
 
 
 @never_cache
-@browserid_login_required
+@login_required
 def edit_profile(request):
     """View for editing the current user's profile."""
     return _edit_profile(request, False)
 
 
 @never_cache
-@browserid_login_required
+@anonymous_csrf
 def edit_new_profile(request):
     return _edit_profile(request, True)
 
@@ -179,7 +180,7 @@ class UNAUTHORIZED_DELETE(Exception):
 
 
 @never_cache
-@browserid_login_required
+@login_required
 def confirm_delete(request):
     """Display a confirmation page asking the user if they want to leave."""
     del_form = forms.DeleteForm(initial=dict(unique_id=request.user.unique_id))
@@ -187,7 +188,7 @@ def confirm_delete(request):
 
 
 @never_cache
-@browserid_login_required
+@login_required
 @require_POST
 def delete(request):
     form = forms.DeleteForm(request.POST)
@@ -270,7 +271,7 @@ def search_plugin(request):
                   content_type='application/opensearchdescription+xml')
 
 
-@browserid_login_required
+@login_required
 def photo(request, unique_id):
     needs_master = (request.user.unique_id == unique_id)
 
@@ -282,7 +283,7 @@ def photo(request, unique_id):
         return redirect('/media/img/unknown.png')
 
 
-@browserid_login_required
+@login_required
 def invited(request, id):
     invite = Invite.objects.get(pk=id)
     return render(request, 'phonebook/invited.html', dict(invite=invite))

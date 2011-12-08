@@ -1,5 +1,4 @@
-from django.contrib import auth
-from django.contrib import messages
+from django.contrib import auth, messages
 from django.shortcuts import redirect
 from django.views.decorators.http import require_POST
 

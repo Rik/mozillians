@@ -101,7 +101,7 @@ class Anonymous(AnonymousUser):
     """Anonymous user provides minimum data for views and templates."""
     def __init__(self):
         super(Anonymous, self).__init__()
-        self.unique_id = 0
+        self.unique_id = '0'
 
 
 @receiver(models.signals.post_save, sender=User)
